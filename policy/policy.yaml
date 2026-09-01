@@ -1,0 +1,68 @@
+# =============================================================================
+# DEMO MERCHANT POLICY -- NOT RAZORPAY'S ACTUAL TERMS
+# -----------------------------------------------------------------------------
+# Every numeric rule in this file is a synthetic demo-merchant policy authored
+# for this project. It is NOT a claim about how Razorpay actually operates.
+# Real MDR, settlement timing and fee treatment vary by merchant category, risk
+# grade and commercial agreement, and are not public in the form encoded here.
+#
+# Rule ID convention: POLICY.<SECTION>.<KEY>@<version>
+#   e.g. POLICY.MDR.CARD@1.0.0
+# =============================================================================
+version: "1.0.0"
+currency: "INR"
+
+rounding:
+  mode: "HALF_UP"                # ROUND_HALF_UP to nearest paise
+  tax_computation: "PER_ITEM"    # tax computed per payment item, then summed
+
+# --- POLICY.MDR.* : gateway fee in basis points on gross payment amount
+mdr_bps:
+  UPI: 0
+  CARD: 200
+  CARD_INTL: 300
+  NETBANKING: 175
+  WALLET: 200
+
+# --- POLICY.TAX.GST_ON_FEE
+gst_on_fee_bps: 1800
+
+# --- POLICY.REFUND.*
+refunds:
+  window_days: 180
+  mdr_refunded: false            # gateway fee is NOT returned when a payment is refunded
+
+# --- POLICY.SETTLEMENT.*
+settlement:
+  cycle_working_days: 2          # T+2
+  exclude_sundays: true
+  exclude_second_fourth_saturday: true
+  holidays:
+    - "2026-01-26"
+    - "2026-03-04"
+    - "2026-03-21"
+    - "2026-04-14"
+    - "2026-05-01"
+    - "2026-08-15"
+    - "2026-10-02"
+    - "2026-10-20"
+    - "2026-12-25"
+
+# --- POLICY.BANK.*
+bank_credit:
+  expected_lag_days: 0           # credit lands same day as settlement_date
+  tolerance_days: 1              # but may slip by one
+
+# --- POLICY.COMMISSION.* : marketplace commission by seller type
+commission_bps_by_seller_type:
+  INDIVIDUAL: 1500
+  SMB: 1200
+  ENTERPRISE: 800
+
+# --- POLICY.MATCH.* : matcher configuration
+matching:
+  amount_tolerance_paise: 0
+  date_window_days: 3
+  subset_sum_max_candidates: 10
+  subset_sum_max_subset_size: 4
+  fuzzy_reference_min_score_bps: 8500

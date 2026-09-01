@@ -1,0 +1,53 @@
+{
+  "fixture_id": "M05_refund_outside_period",
+  "title": "Refund after period_end must NOT be deducted (golden test 14 -- false-positive trap)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M05_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000105"
+  },
+  "payments": [
+    {
+      "payment_id": "M05_P1",
+      "payment_method": "CARD",
+      "amount_paise": 400000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 8000,
+      "policy_tax_paise": 1440,
+      "derivation": "(400000*200+5000)//10000 = 8000; (8000*1800+5000)//10000 = 1440"
+    }
+  ],
+  "refunds": [
+    {
+      "refund_id": "M05_R1",
+      "payment_id": "M05_P1",
+      "refund_amount_paise": 150000,
+      "refund_date": "2026-08-16",
+      "refund_status": "PROCESSED",
+      "in_period": false,
+      "present_in_settlement_items": false,
+      "derivation": "2026-08-16 is AFTER period_end 2026-08-14 (though before settlement_date 2026-08-18). It belongs to a LATER settlement. Deducting it here would be a fabricated explanation."
+    }
+  ],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 400000,
+    "refunds_paise": 0,
+    "computed_fee_paise": 8000,
+    "computed_tax_paise": 1440,
+    "adjustments_paise": 0,
+    "expected_net_paise": 390560,
+    "derivation_net": "400000 - 0 - 8000 - 1440",
+    "actual_net_paise": 390560,
+    "d1_paise": 0,
+    "attributions": [],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "MATCHED",
+    "note": "THE ENGINE MUST PRODUCE ZERO ATTRIBUTIONS HERE. A nearby refund is not evidence."
+  }
+}

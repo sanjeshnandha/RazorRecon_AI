@@ -1,0 +1,120 @@
+{
+  "fixture_id": "M10_duplicate_ledger",
+  "title": "Delta-3: settlement posting entered twice (golden test 10)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M10_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000110"
+  },
+  "payments": [
+    {
+      "payment_id": "M10_P1",
+      "payment_method": "CARD",
+      "amount_paise": 500000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 10000,
+      "policy_tax_paise": 1800,
+      "derivation": "(500000*200+5000)//10000 = 10000; (10000*1800+5000)//10000 = 1800"
+    }
+  ],
+  "refunds": [],
+  "adjustments": [],
+  "ledger_entry_groups": [
+    {
+      "entry_group_id": "M10_G_CAP",
+      "event": "capture",
+      "legs": [
+        {
+          "account": "RAZORPAY_CLEARING",
+          "direction": "DR",
+          "amount_paise": 500000
+        },
+        {
+          "account": "SALES",
+          "direction": "CR",
+          "amount_paise": 500000
+        }
+      ],
+      "derivation": "on capture: DR CLEARING G / CR SALES G, G = 500000"
+    },
+    {
+      "entry_group_id": "M10_G_SET",
+      "event": "settlement",
+      "legs": [
+        {
+          "account": "BANK",
+          "direction": "DR",
+          "amount_paise": 488200
+        },
+        {
+          "account": "GATEWAY_FEES",
+          "direction": "DR",
+          "amount_paise": 10000
+        },
+        {
+          "account": "INPUT_GST",
+          "direction": "DR",
+          "amount_paise": 1800
+        },
+        {
+          "account": "RAZORPAY_CLEARING",
+          "direction": "CR",
+          "amount_paise": 500000
+        }
+      ],
+      "derivation": "C = G - R = 500000; N = C - F - T = 500000 - 10000 - 1800 = 488200. DR total 488200+10000+1800 = 500000 = CR total. Balanced."
+    },
+    {
+      "entry_group_id": "M10_G_SET_DUP",
+      "event": "settlement (DUPLICATE -- the planted defect)",
+      "legs": [
+        {
+          "account": "BANK",
+          "direction": "DR",
+          "amount_paise": 488200
+        },
+        {
+          "account": "GATEWAY_FEES",
+          "direction": "DR",
+          "amount_paise": 10000
+        },
+        {
+          "account": "INPUT_GST",
+          "direction": "DR",
+          "amount_paise": 1800
+        },
+        {
+          "account": "RAZORPAY_CLEARING",
+          "direction": "CR",
+          "amount_paise": 500000
+        }
+      ],
+      "derivation": "byte-identical second posting of the settlement event"
+    }
+  ],
+  "expected": {
+    "d1_paise": 0,
+    "d2_paise": 0,
+    "clearing_dr_paise": 500000,
+    "clearing_cr_paise": 1000000,
+    "d3_paise": -500000,
+    "derivation_d3": "clearing balance = DR 500000 - CR 1000000 = -500000. For a fully settled payment the RAZORPAY_CLEARING balance must net to exactly zero.",
+    "attributions": [
+      {
+        "rule": "ATTR.DUPLICATE_LEDGER",
+        "evidence_type": "duplicate_ledger",
+        "evidence_record_id": "M10_G_SET_DUP",
+        "signed_amount_paise": -500000,
+        "derivation": "the duplicated entry_group_id, cited by group not by leg"
+      }
+    ],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "EXPLAINED",
+    "exception_type": "DUPLICATE_LEDGER_ENTRY"
+  }
+}

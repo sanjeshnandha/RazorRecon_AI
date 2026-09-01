@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Finance Controller</title>
+<style>
+/* ===========================================================================
+   White + emerald. One accent colour, used only where it means something:
+   emerald = reconciled / proven, amber = needs a human, red = unexplained.
+   =========================================================================== */
+:root{
+  --em-50:#ecfdf5; --em-100:#d1fae5; --em-200:#a7f3d0; --em-300:#6ee7b7;
+  --em-500:#10b981; --em-600:#059669; --em-700:#047857; --em-900:#064e3b;
+  --ink:#0f172a; --ink-2:#334155; --ink-3:#64748b; --ink-4:#94a3b8;
+  --line:#e2e8f0; --line-2:#f1f5f9; --bg:#ffffff; --bg-2:#f8fafc;
+  --amber:#b45309; --amber-bg:#fffbeb; --amber-line:#fde68a;
+  --red:#b91c1c; --red-bg:#fef2f2; --red-line:#fecaca;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--em-700);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+
+/* ---------- chrome ---------- */
+header.top{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:16px;padding:12px 24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:-.01em}
+.mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(140deg,var(--em-500),var(--em-700));
+  display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700}
+.brand small{display:block;font-weight:400;color:var(--ink-3);font-size:11px;letter-spacing:0}
+.spacer{flex:1}
+select,input[type=text],input[type=search]{border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  background:#fff;color:var(--ink);font:inherit;outline:none}
+select:focus,input:focus{border-color:var(--em-500);box-shadow:0 0 0 3px var(--em-100)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 13px;cursor:pointer;
+  color:var(--ink-2);font-weight:500;transition:.12s}
+.btn:hover{border-color:var(--em-300);color:var(--em-700);background:var(--em-50)}
+.btn.primary{background:var(--em-600);border-color:var(--em-600);color:#fff}
+.btn.primary:hover{background:var(--em-700);border-color:var(--em-700);color:#fff}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+nav.tabs{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);background:#fff;
+  overflow-x:auto}
+nav.tabs button{border:0;background:none;padding:11px 14px;cursor:pointer;color:var(--ink-3);
+  font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button.on{color:var(--em-700);border-bottom-color:var(--em-600)}
+
+/* the disclaimer is not decoration -- it is on every screen, always */
+.disclaimer{background:var(--em-50);border-bottom:1px solid var(--em-100);color:var(--em-900);
+  padding:7px 24px;font-size:12px;display:flex;align-items:center;gap:8px}
+.disclaimer b{font-weight:650}
+main{padding:24px;max-width:1500px;margin:0 auto}
+
+/* ---------- cards ---------- */
+.grid{display:grid;gap:16px}
+.card{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden}
+.card>h3{margin:0;padding:13px 16px;font-size:13px;font-weight:650;color:var(--ink-2);
+  border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:8px}
+.card>h3 .sub{font-weight:400;color:var(--ink-4);font-size:12px}
+.card .body{padding:16px}
+.hero{border:1px solid var(--em-200);border-radius:14px;background:
+  linear-gradient(160deg,var(--em-50),#fff 62%);padding:22px 24px}
+.hero .label{font-size:12px;color:var(--em-700);font-weight:600;text-transform:uppercase;
+  letter-spacing:.06em}
+.hero .big{font-family:var(--mono);font-size:42px;font-weight:600;letter-spacing:-.02em;
+  margin:6px 0 2px;color:var(--ink)}
+.hero .big.risk{color:var(--red)}
+.hero .note{color:var(--ink-3);font-size:12.5px;max-width:46ch}
+.stat{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fff}
+.stat .k{font-size:11.5px;color:var(--ink-3);font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em}
+.stat .v{font-family:var(--mono);font-size:26px;font-weight:600;margin-top:4px;letter-spacing:-.01em}
+.stat .d{font-size:12px;color:var(--ink-4);margin-top:2px}
+.stat.good .v{color:var(--em-700)}
+.stat.warn .v{color:var(--amber)}
+.stat.bad  .v{color:var(--red)}
+.meter{height:5px;border-radius:3px;background:var(--line-2);margin-top:9px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--em-500)}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--ink-3);font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.04em;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;
+  background:var(--bg-2);position:sticky;top:0}
+td{padding:7px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle;white-space:nowrap}
+tbody tr:hover{background:var(--em-50)}
+tr.clickable{cursor:pointer}
+tr.zebra:nth-child(even){background:#fcfdfe}
+td.wrap,td .wrap{white-space:normal;min-width:220px}
+.dcell{display:flex;gap:3px}
+.legend{display:flex;gap:14px;align-items:center;margin-left:auto;font-size:11.5px;color:var(--ink-3)}
+
+/* ---------- chips ---------- */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+  font-size:11.5px;font-weight:600;border:1px solid;white-space:nowrap}
+.chip.a{background:var(--em-50);border-color:var(--em-200);color:var(--em-700)}
+.chip.b{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+.chip.c{background:var(--red-bg);border-color:var(--red-line);color:var(--red)}
+.chip.n{background:var(--bg-2);border-color:var(--line);color:var(--ink-3)}
+.dchip{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:6px;
+  font-size:11px;font-weight:600;font-family:var(--mono);border:1px solid;cursor:pointer}
+.dchip.a{background:var(--em-50);border-color:var(--em-200);color:var(--em-700)}
+.dchip.b{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+.dchip.c{background:var(--red-bg);border-color:var(--red-line);color:var(--red)}
+.tag{display:inline-block;padding:1px 6px;border-radius:5px;background:var(--bg-2);
+  border:1px solid var(--line);color:var(--ink-3);font-size:11px;font-family:var(--mono)}
+.rule{display:inline-block;padding:1px 6px;border-radius:5px;background:var(--em-50);
+  border:1px solid var(--em-100);color:var(--em-700);font-size:10.5px;font-family:var(--mono);
+  margin-right:4px}
+.policy-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--em-700);
+  background:var(--em-50);border:1px solid var(--em-100);border-radius:5px;padding:1px 5px;
+  font-weight:600;white-space:nowrap}
+
+/* ---------- explain panel ---------- */
+.explain{font-family:var(--mono);font-size:12.5px;line-height:1.85}
+.explain .row{display:flex;gap:12px;align-items:baseline}
+.explain .row .l{flex:1;color:var(--ink-2)}
+.explain .row .r{width:150px;text-align:right;font-variant-numeric:tabular-nums}
+.explain .sep{border-top:1px dashed var(--line);margin:7px 0}
+.explain .why{color:var(--ink-4);font-size:11.5px;padding-left:14px;line-height:1.6;
+  font-family:inherit;white-space:normal}
+.explain .tot{font-weight:650}
+.explain .res.zero{color:var(--em-700)}
+.explain .res.open{color:var(--red)}
+
+/* ---------- trace ---------- */
+.trace{font-family:var(--mono);font-size:12.5px}
+.trace .node{padding:5px 0 5px 0;border-left:2px solid var(--em-100);margin-left:6px}
+.trace .node .line{display:flex;gap:8px;align-items:baseline;padding-left:14px;position:relative}
+.trace .node .line::before{content:"";position:absolute;left:-1px;top:11px;width:11px;height:2px;
+  background:var(--em-100)}
+.trace .kind{color:var(--em-700);font-weight:600}
+.trace .id{color:var(--ink)}
+.trace .meta{color:var(--ink-4);font-size:11.5px}
+.trace .amt{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+
+.empty{padding:36px;text-align:center;color:var(--ink-4)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;
+  border-bottom:1px solid var(--line-2);background:var(--bg-2)}
+.filters label{font-size:12px;color:var(--ink-3);font-weight:500}
+details.raw{margin-top:10px}
+details.raw summary{cursor:pointer;color:var(--ink-3);font-size:12px}
+pre{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px;
+  overflow:auto;font-size:11.5px;max-height:340px}
+.crumb{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:var(--ink-3);font-size:13px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px}
+.kv dt{color:var(--ink-3)}
+.kv dd{margin:0;font-family:var(--mono)}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:11px 16px;
+  border-radius:10px;font-size:13px;z-index:99;box-shadow:0 8px 24px rgba(15,23,42,.2)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--em-200);
+  border-top-color:var(--em-600);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <div class="brand"><div class="mark">₹</div>
+      <div>AI Finance Controller
+        <small>deterministic settlement reconciliation &middot; P0</small></div></div>
+    <div class="spacer"></div>
+    <label style="font-size:12px;color:var(--ink-3)">Run</label>
+    <select id="runsel" style="min-width:300px"></select>
+    <button class="btn" id="btn-generate">Generate dataset</button>
+    <button class="btn" id="btn-tick" title="Append the next settlement cycle to this dataset and re-reconcile everything">Simulate next cycle</button>
+    <button class="btn primary" id="btn-run">Run reconciliation</button>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="disclaimer">
+    <b>Demo Merchant Policy</b>
+    <span>&mdash; not Razorpay's actual terms. Every fee, tax, settlement-cycle and bank-lag figure
+    on this screen comes from a synthetic policy file authored for this project.</span>
+  </div>
+</header>
+<main id="app"><div class="empty"><span class="spin"></span> loading…</div></main>
+<script>
+/* ==========================================================================
+   State + tiny render loop. No framework, no build step, no CDN -- the whole
+   UI is this one file, so it runs offline next to the API.
+   ========================================================================== */
+const S = {tab:"dashboard", runs:[], run:null, metrics:null, settlements:[], exceptions:[],
+           sellers:[], detail:null, sid:null, trace:null, traceQ:{type:"payment", id:""},
+           filters:{status:"", tier:"", severity:"", kind:"", q:""}, busy:false, toast:null};
+
+const $  = (s,r=document)=>r.querySelector(s);
+const el = (t,a={},...c)=>{const n=document.createElement(t);
+  for(const[k,v]of Object.entries(a)){
+    if(k==="class")n.className=v; else if(k==="html")n.innerHTML=v;
+    else if(k.startsWith("on"))n.addEventListener(k.slice(2),v);
+    else if(v!==null&&v!==undefined)n.setAttribute(k,v);}
+  for(const x of c.flat()){if(x===null||x===undefined||x===false)continue;
+    n.appendChild(typeof x==="object"?x:document.createTextNode(String(x)));}
+  return n;};
+
+/* Money only ever becomes a string here, at the display boundary. */
+function rupees(p){
+  if(p===null||p===undefined)return "";
+  const neg=p<0, v=Math.abs(Math.round(p));
+  let w=String(Math.floor(v/100)), f=String(v%100).padStart(2,"0");
+  if(w.length>3){let head=w.slice(0,-3), tail=w.slice(-3), parts=[];
+    while(head.length>2){parts.unshift(head.slice(-2));head=head.slice(0,-2);}
+    if(head)parts.unshift(head); w=parts.join(",")+","+tail;}
+  return (neg?"−":"")+"₹"+w+"."+f;
+}
+function compact(p){
+  const v=Math.abs(p)/100;
+  if(v>=1e7)return (p<0?"−":"")+"₹"+(v/1e7).toFixed(2)+" Cr";
+  if(v>=1e5)return (p<0?"−":"")+"₹"+(v/1e5).toFixed(2)+" L";
+  return rupees(p);
+}
+const pct = v => (v===null||v===undefined)?"—":v.toFixed(2)+"%";
+const tierClass = t => ({A:"a",B:"b",C:"c"})[t]||"n";
+const dt = s => s? String(s).slice(0,10) : "";
+
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  if(!r.ok){ let d; try{d=await r.json()}catch(e){d={detail:r.statusText}}
+    throw new Error(d.detail||("HTTP "+r.status)); }
+  return r.json();
+}
+function toast(msg, ms=3200){ S.toast=msg; render(); setTimeout(()=>{S.toast=null;render()}, ms); }
+
+/* ------------------------------------------------------------------ boot */
+async function boot(){
+  S.runs = await api("/api/runs");
+  if(S.runs.length){ await selectRun(S.runs[0].run_id); }
+  render();
+}
+async function selectRun(rid){
+  S.run = S.runs.find(r=>r.run_id===rid) || null;
+  if(!S.run) return;
+  S.busy = true; render();
+  const [m, st, ex, se] = await Promise.all([
+    api(`/api/runs/${rid}/metrics`), api(`/api/runs/${rid}/settlements`),
+    api(`/api/runs/${rid}/exceptions`), api(`/api/runs/${rid}/sellers`)]);
+  S.metrics=m; S.settlements=st.settlements; S.exceptions=ex.exceptions; S.sellers=se.sellers;
+  S.detail=null; S.sid=null; S.busy=false; render();
+}
+async function openSettlement(sid){
+  S.busy=true; S.tab="detail"; S.sid=sid; render();
+  S.detail = await api(`/api/runs/${S.run.run_id}/settlements/${sid}`);
+  S.busy=false; render();
+}
+async function runTrace(){
+  if(!S.traceQ.id) return;
+  S.busy=true; render();
+  try{ S.trace = await api(`/api/runs/${S.run.run_id}/trace?node_type=${S.traceQ.type}`+
+                           `&node_id=${encodeURIComponent(S.traceQ.id)}`); }
+  catch(e){ toast(e.message); }
+  S.busy=false; render();
+}
+
+/* ============================== WATERFALL ==============================
+   The one visual that makes the whole problem legible: gross, every policy
+   deduction in order, what we expected, what actually arrived, and a final
+   bar that is either zero or the exact unexplained rupees.
+   ====================================================================== */
+function waterfall(steps, height=270){
+  const W=Math.max(760, steps.length*104), H=height, padL=54, padR=18, padT=22, padB=64;
+  const iw=W-padL-padR, ih=H-padT-padB, bw=Math.min(66, iw/steps.length*0.62);
+  // running cumulative for the delta bars
+  let run=0; const bars=[];
+  for(const s of steps){
+    if(s.kind==="base"){ bars.push({...s, from:0, to:s.paise}); run=s.paise; }
+    else if(s.kind==="delta"){ bars.push({...s, from:run, to:run+s.paise}); run+=s.paise; }
+    else { bars.push({...s, from:0, to:s.paise}); }
+  }
+  const vals=bars.flatMap(b=>[b.from,b.to]).concat([0]);
+  const lo=Math.min(...vals), hi=Math.max(...vals), span=(hi-lo)||1;
+  const y=v=>padT+ih-((v-lo)/span)*ih;
+  const colour=b=>b.kind==="residual"?(b.paise===0?"var(--em-500)":"var(--red)")
+                 :b.kind==="base"?"var(--em-600)"
+                 :b.kind==="subtotal"?"var(--em-700)"
+                 :b.kind==="actual"?"#0f172a"
+                 :(b.paise<0?"#94a3b8":"var(--em-300)");
+  const ns="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.setAttribute("width","100%");
+  svg.setAttribute("style",`min-width:${W}px;height:${H}px;display:block`);
+  const mk=(t,a)=>{const n=document.createElementNS(ns,t);
+    for(const[k,v]of Object.entries(a))n.setAttribute(k,v);return n;};
+  // gridlines
+  for(let i=0;i<=4;i++){
+    const v=lo+span*i/4;
+    svg.appendChild(mk("line",{x1:padL,x2:W-padR,y1:y(v),y2:y(v),stroke:"#f1f5f9","stroke-width":1}));
+    const tx=mk("text",{x:padL-8,y:y(v)+4,"text-anchor":"end","font-size":10,fill:"#94a3b8",
+      "font-family":"ui-monospace,monospace"});
+    tx.textContent=compact(v); svg.appendChild(tx);
+  }
+  svg.appendChild(mk("line",{x1:padL,x2:W-padR,y1:y(0),y2:y(0),stroke:"#cbd5e1","stroke-width":1}));
+  bars.forEach((b,i)=>{
+    const cx=padL+(iw/bars.length)*(i+0.5), x=cx-bw/2;
+    const yt=Math.min(y(b.from),y(b.to)), h=Math.max(2.5,Math.abs(y(b.to)-y(b.from)));
+    svg.appendChild(mk("rect",{x,y:yt,width:bw,height:h,rx:3,fill:colour(b),
+      opacity:b.kind==="delta"?0.92:1}));
+    if(i<bars.length-1 && b.kind!=="subtotal" && bars[i+1].kind==="delta"){
+      svg.appendChild(mk("line",{x1:x+bw,x2:padL+(iw/bars.length)*(i+1.5)-bw/2,
+        y1:y(b.to),y2:y(b.to),stroke:"#cbd5e1","stroke-width":1,"stroke-dasharray":"3 3"}));
+    }
+    const vt=mk("text",{x:cx,y:yt-6,"text-anchor":"middle","font-size":10.5,
+      fill:b.kind==="residual"&&b.paise!==0?"var(--red)":"#334155","font-weight":600,
+      "font-family":"ui-monospace,monospace"});
+    vt.textContent=compact(b.paise); svg.appendChild(vt);
+    const words=b.label.split(" "); let line="", ly=padT+ih+16;
+    for(const w of words){
+      if((line+" "+w).trim().length>11){ const t=mk("text",{x:cx,y:ly,"text-anchor":"middle",
+        "font-size":10.5,fill:"#64748b"}); t.textContent=line; svg.appendChild(t);
+        line=w; ly+=12; } else line=(line+" "+w).trim();
+    }
+    const t=mk("text",{x:cx,y:ly,"text-anchor":"middle","font-size":10.5,fill:"#64748b"});
+    t.textContent=line; svg.appendChild(t);
+    if(b.policy_derived){
+      const p=mk("text",{x:cx,y:ly+12,"text-anchor":"middle","font-size":9,fill:"#10b981"});
+      p.textContent="demo policy"; svg.appendChild(p);
+    }
+  });
+  return svg;
+}
+
+/* ============================== DASHBOARD ============================== */
+function viewDashboard(){
+  const m=S.metrics; if(!m) return el("div",{class:"empty"},"No run selected.");
+  const a=m.accuracy, g=m.ground_truth, t=m.throughput, ti=m.tiers;
+  // the settlement with the most unexplained money is the one worth showing
+  const worst=[...S.settlements].sort((x,y)=>y.unexplained_paise-x.unexplained_paise)[0];
+  const wf = worst ? buildWaterfallFromRow(worst) : null;
+
+  const statCard=(k,v,d,cls,meter)=>el("div",{class:"stat "+(cls||"")},
+    el("div",{class:"k"},k), el("div",{class:"v"},v), d&&el("div",{class:"d"},d),
+    meter!==undefined&&el("div",{class:"meter"},el("i",{style:`width:${Math.max(0,Math.min(100,meter))}%`})));
+
+  return el("div",{class:"grid",style:"gap:18px"},
+    el("div",{class:"grid",style:"grid-template-columns:minmax(300px,1.05fr) 2fr"},
+      el("div",{class:"hero"},
+        el("div",{class:"label"},"Amount at risk, right now"),
+        el("div",{class:"big risk"}, rupees(a.amount_at_risk_paise)),
+        el("div",{class:"note"},
+          `Sum of every rupee this run could not explain, across ${m.exceptions.open} open `+
+          `exceptions. Not "N problems" — the figure a CFO actually asks for.`),
+        el("div",{style:"margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"},
+          el("span",{class:"chip a"}, `${g.false_auto_resolution_count} false auto-resolutions`),
+          el("span",{class:"chip a"}, `${g.unresolvable_correctly_escalated}/${g.unresolvable_planted} undiagnosable cases escalated`),
+          el("span",{class:"chip a"}, `${g.false_positive_traps_avoided}/${g.false_positive_traps} traps avoided`))),
+      el("div",{class:"grid",style:"grid-template-columns:repeat(3,1fr);align-content:start"},
+        statCard("Settlement match rate", pct(a.record_match_rate_pct),
+          `${a.settlements_fully_resolved} of ${t.settlements} settlements clean on all four deltas`,
+          "good", a.record_match_rate_pct),
+        statCard("Monetary reconciliation", pct(a.monetary_reconciliation_rate_pct),
+          `${compact(a.total_settled_value_paise)} settled value examined`, "good",
+          a.monetary_reconciliation_rate_pct),
+        statCard("Seller payout reconciliation", pct(a.seller_payout_reconciliation_rate_pct),
+          "reported on its own axis — Δ1–Δ3 can be perfect while a seller is short", "good",
+          a.seller_payout_reconciliation_rate_pct),
+        statCard("Δ1 compute", pct(a.d1_match_rate_pct), "policy-derived fee, tax, refunds"),
+        statCard("Δ2 bank", pct(a.d2_match_rate_pct), "did the money actually arrive"),
+        statCard("Δ3 ledger", pct(a.d3_match_rate_pct), "do the merchant's books agree"))),
+
+    worst && el("div",{class:"card"},
+      el("h3",{}, "Financial waterfall — ", el("span",{class:"mono"},worst.settlement_id),
+        el("span",{class:"sub"}," worst unexplained residual in this batch"),
+        el("span",{class:"spacer",style:"flex:1"}),
+        el("button",{class:"btn",onclick:()=>openSettlement(worst.settlement_id)},"Open settlement →")),
+      el("div",{class:"body",style:"overflow-x:auto;padding-bottom:8px"}, waterfall(wf)),
+      el("div",{style:"padding:0 16px 14px;color:var(--ink-3);font-size:12.5px"},
+        "Every deduction is computed from the demo policy registry, never read back off the "+
+        "settlement report. The final bar is either ₹0.00 or the exact amount no source record "+
+        "accounts for.")),
+
+    el("div",{class:"grid",style:"grid-template-columns:1fr 1fr"},
+      el("div",{class:"card"},
+        el("h3",{},"Measured against ground truth",
+          el("span",{class:"sub"},`${g.planted_total} planted anomalies`)),
+        el("div",{class:"tablewrap"}, el("table",{},
+          el("tbody",{},
+            gtRow("Resolvable anomalies detected",
+              `${g.resolvable_detected} / ${g.resolvable_planted}`, g.resolvable_detection_rate_pct,
+              "a 'flag nothing' engine scores 0% here — that is the point"),
+            gtRow("Diagnosis accuracy (correct exception type)",
+              `${g.diagnosis_correct} / ${g.resolvable_planted}`, g.diagnosis_accuracy_pct,
+              "named the right defect, not just 'something is wrong'"),
+            gtRow("Undiagnosable cases correctly escalated",
+              `${g.unresolvable_correctly_escalated} / ${g.unresolvable_planted}`,
+              g.correct_escalation_rate_pct, "refused to guess, and said so in rupees"),
+            gtRow("False-positive traps avoided",
+              `${g.false_positive_traps_avoided} / ${g.false_positive_traps}`,
+              100*g.false_positive_traps_avoided/(g.false_positive_traps||1),
+              "nearby evidence that must NOT be used"),
+            gtRow("False auto-resolutions", String(g.false_auto_resolution_count),
+              g.false_auto_resolution_count===0?100:0,
+              "a wrong tier-A verdict is worse than an open exception")))),
+        g.matcher_guard_checks.length ? el("div",{class:"body",style:"border-top:1px solid var(--line-2)"},
+          el("div",{style:"font-size:12px;color:var(--ink-3);margin-bottom:7px;font-weight:600"},
+            "Matcher guards"),
+          ...g.matcher_guard_checks.map(c=>el("div",{style:"font-size:12.5px;margin-bottom:4px"},
+            el("span",{class:"chip "+(c.passed?"a":"c")}, c.passed?"held":"BROKE"), " ",
+            el("span",{class:"tag"},c.settlement_id), " ", c.guard,
+            " — resolved by ", el("span",{class:"mono"}, c.matched_by||"nothing (tier C)")))) : null),
+
+      el("div",{class:"card"},
+        el("h3",{},"Throughput"),
+        el("div",{class:"body"},
+          el("p",{style:"margin:0 0 12px;color:var(--ink-2);line-height:1.6"}, t.headline),
+          el("dl",{class:"kv"},
+            el("dt",{},"Batch wall time"), el("dd",{}, t.elapsed_seconds+" s"),
+            el("dt",{},"Records / second"), el("dd",{}, t.records_per_second.toLocaleString()),
+            el("dt",{},"p50 per settlement"), el("dd",{}, t.p50_settlement_ms+" ms"),
+            el("dt",{},"p95 per settlement"), el("dd",{}, t.p95_settlement_ms+" ms"),
+            el("dt",{},"Deltas computed"), el("dd",{}, ti.total_deltas.toLocaleString()),
+            el("dt",{},"Tier A / B / C"),
+              el("dd",{}, `${ti.tier_a} / ${ti.tier_b} / ${ti.tier_c}`),
+            el("dt",{},"Auto-resolution"), el("dd",{}, pct(ti.auto_resolution_rate_pct)),
+            el("dt",{},"Policy version"), el("dd",{}, m.policy_version+" · "+m.config_hash)),
+          el("div",{style:"margin-top:14px;display:flex;gap:8px"},
+            el("a",{class:"btn",href:`/api/runs/${S.run.run_id}/export.csv`},"Export CSV"),
+            el("a",{class:"btn",href:`/api/runs/${S.run.run_id}/export.json`},"Export JSON"))))),
+
+    el("div",{class:"card"},
+      el("h3",{},"Exceptions by type"),
+      el("div",{class:"body",style:"display:flex;flex-wrap:wrap;gap:7px"},
+        ...Object.entries(m.exceptions.by_type).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+          el("button",{class:"chip n",style:"cursor:pointer",
+            onclick:()=>{S.tab="exceptions";S.filters.q=k;render()}}, k, " ", el("b",{},v))))));
+}
+function gtRow(label, value, rate, note){
+  const ok = rate>=99.999;
+  return el("tr",{}, el("td",{},el("div",{},label),
+      el("div",{style:"color:var(--ink-4);font-size:11.5px"},note)),
+    el("td",{class:"num"},value),
+    el("td",{class:"num"}, el("span",{class:"chip "+(ok?"a":"c")}, pct(rate))));
+}
+function buildWaterfallFromRow(r){
+  const steps=[
+    {label:"Gross captured", paise:r.gross_amount_paise, kind:"base", policy_derived:false},
+    {label:"Refunds", paise:-r.refund_amount_paise, kind:"delta", policy_derived:true},
+    {label:"Gateway fees", paise:-r.fee_amount_paise, kind:"delta", policy_derived:true},
+    {label:"GST on fees", paise:-r.tax_amount_paise, kind:"delta", policy_derived:true},
+    {label:"Adjustments", paise:r.adjustment_amount_paise, kind:"delta", policy_derived:false},
+    {label:"Expected net", paise:r.expected_net_paise, kind:"subtotal", policy_derived:true},
+    {label:"Actual settled", paise:r.net_settlement_amount_paise, kind:"actual", policy_derived:false},
+    {label:"Bank credit", paise:r.bank_paise||0, kind:"actual", policy_derived:false},
+    {label:"Unexplained residual", paise:r.unexplained_paise, kind:"residual", policy_derived:false}];
+  return steps;
+}
+
+/* ============================= SETTLEMENTS ============================= */
+function viewSettlements(){
+  const f=S.filters;
+  const rows=S.settlements.filter(r=>
+    (!f.tier || r.worst_tier===f.tier) &&
+    (!f.status || r.settlement_status===f.status) &&
+    (!f.q || r.settlement_id.toLowerCase().includes(f.q.toLowerCase()) ||
+             (r.settlement_utr||"").toLowerCase().includes(f.q.toLowerCase())));
+  const dchip=(kind,tier,paise,sid)=>el("span",{class:"dchip "+tierClass(tier),
+      title:`${kind}: ${rupees(paise)} — tier ${tier}`,
+      onclick:e=>{e.stopPropagation();openSettlement(sid)}}, kind, paise?" ●":" ✓");
+  return el("div",{class:"card"},
+    el("h3",{},"Settlements",el("span",{class:"sub"},`${rows.length} of ${S.settlements.length}`)),
+    el("div",{class:"filters"},
+      el("input",{type:"search",placeholder:"settlement id or UTR…",value:f.q,
+        oninput:e=>{f.q=e.target.value;render()}}),
+      el("label",{},"Tier"),
+      sel(["","A","B","C"],f.tier,v=>{f.tier=v;render()}),
+      el("label",{},"Status"),
+      sel(["","PROCESSED","ON_HOLD","FAILED"],f.status,v=>{f.status=v;render()}),
+      el("span",{class:"policy-badge"},"fee · tax · cycle = Demo Merchant Policy"),
+      el("span",{class:"legend"},
+        el("span",{},el("span",{class:"dchip a"},"Δ ✓")," delta is exactly zero"),
+        el("span",{},el("span",{class:"dchip a"},"Δ ●")," non-zero but fully explained"),
+        el("span",{},el("span",{class:"dchip b"},"Δ ●")," needs a human"),
+        el("span",{},el("span",{class:"dchip c"},"Δ ●")," unexplained"))),
+    el("div",{class:"tablewrap",style:"max-height:70vh;overflow-y:auto"},
+      el("table",{},
+        el("thead",{},el("tr",{},...["Settlement","Period","Gross","Refunds","Fee","Tax","Adj",
+          "Expected net","Actual net","Bank","UTR","Δ1","Δ2","Δ3","Δ4","Unexplained","Tier"]
+          .map(h=>el("th",{class:["Gross","Refunds","Fee","Tax","Adj","Expected net","Actual net",
+            "Bank","Unexplained"].includes(h)?"num":""},h)))),
+        el("tbody",{}, ...rows.map(r=>el("tr",{class:"clickable zebra",
+            onclick:()=>openSettlement(r.settlement_id)},
+          el("td",{}, el("span",{class:"mono"},r.settlement_id),
+            r.settlement_status!=="PROCESSED" && el("div",{},
+              el("span",{class:"chip b"},r.settlement_status))),
+          el("td",{class:"mono",style:"font-size:11px;color:var(--ink-3)"},
+            dt(r.settlement_period_start).slice(5)+" → "+dt(r.settlement_period_end).slice(5)),
+          el("td",{class:"num"},compact(r.gross_amount_paise)),
+          el("td",{class:"num"},compact(-r.refund_amount_paise)),
+          el("td",{class:"num"},compact(-r.fee_amount_paise)),
+          el("td",{class:"num"},compact(-r.tax_amount_paise)),
+          el("td",{class:"num"},r.adjustment_amount_paise?compact(r.adjustment_amount_paise):"—"),
+          el("td",{class:"num"},compact(r.expected_net_paise)),
+          el("td",{class:"num"},compact(r.net_settlement_amount_paise)),
+          el("td",{class:"num"},r.bank_paise?compact(r.bank_paise):"—"),
+          el("td",{class:"mono",style:"font-size:11px;color:var(--ink-4)"},r.settlement_utr||"—"),
+          el("td",{},dchip("Δ1",r.d1_tier,r.d1_paise,r.settlement_id)),
+          el("td",{},dchip("Δ2",r.d2_tier,r.d2_paise,r.settlement_id)),
+          el("td",{},dchip("Δ3",r.d3_tier,r.d3_paise,r.settlement_id)),
+          el("td",{},dchip("Δ4",r.d4_tier,r.d4_residual,r.settlement_id)),
+          el("td",{class:"num",style:r.unexplained_paise?"color:var(--red);font-weight:600":""},
+            r.unexplained_paise?rupees(r.unexplained_paise):"₹0.00"),
+          el("td",{},el("span",{class:"chip "+tierClass(r.worst_tier)},r.worst_tier))))))));
+}
+function sel(opts,val,on){
+  const s=el("select",{onchange:e=>on(e.target.value)});
+  for(const o of opts){const n=el("option",{value:o},o||"all"); if(o===val)n.selected=true;
+    s.appendChild(n);} return s;
+}
+
+/* ============================ SETTLEMENT DETAIL ======================== */
+function viewDetail(){
+  const d=S.detail; if(!d) return el("div",{class:"empty"},S.busy?"loading…":"Pick a settlement.");
+  const s=d.settlement;
+  const byKind = k => d.deltas.filter(x=>x.delta_kind===k);
+  return el("div",{class:"grid",style:"gap:16px"},
+    el("div",{class:"crumb"},
+      el("button",{class:"btn",onclick:()=>{S.tab="settlements";render()}},"← Settlements"),
+      el("b",{class:"mono",style:"font-size:16px;color:var(--ink)"},s.settlement_id),
+      el("span",{},`period ${dt(s.settlement_period_start)} → ${dt(s.settlement_period_end)}, `+
+        `settled ${dt(s.settlement_date)}`),
+      el("span",{class:"tag"},s.settlement_status),
+      s.settlement_utr && el("span",{class:"tag"},"UTR "+s.settlement_utr)),
+
+    el("div",{class:"card"},
+      el("h3",{},"Waterfall for this settlement",
+        el("span",{class:"policy-badge",style:"margin-left:auto"},"Demo Merchant Policy")),
+      el("div",{class:"body",style:"overflow-x:auto"}, waterfall(d.waterfall))),
+
+    el("div",{class:"grid",style:"grid-template-columns:1.25fr 1fr"},
+      el("div",{class:"card"},
+        el("h3",{},"Explain — the attribution ledger"),
+        el("div",{class:"body"}, ...["D1_COMPUTE","D2_BANK","D3_LEDGER"].map(k=>
+          explainBlock(k, byKind(k), d.attributions)),
+          explainD4(byKind("D4_PAYOUT"), d.attributions))),
+      el("div",{class:"grid",style:"align-content:start;gap:16px"},
+        el("div",{class:"card"},
+          el("h3",{},"Δ1 arithmetic, from policy"),
+          el("div",{class:"body explain"},
+            arithRow("Gross captured (from items)", d.d1.gross_paise),
+            arithRow("− In-period refunds (source-derived)", -d.d1.source_refunds_paise,
+              `items show ${rupees(d.d1.item_refunds_paise)}`),
+            arithRow("− Gateway fee at policy MDR", -d.d1.computed_fee_paise,
+              `charged ${rupees(d.d1.charged_fee_paise)}`),
+            arithRow("− GST on fee, PER_ITEM", -d.d1.computed_tax_paise,
+              `charged ${rupees(d.d1.charged_tax_paise)}; aggregate method would give `+
+              rupees(d.d1.aggregate_tax_paise)),
+            arithRow("± Itemised adjustments", d.d1.item_adjustments_paise),
+            el("div",{class:"sep"}),
+            arithRow("Expected net", d.d1.expected_net_paise, null, true),
+            arithRow("Actual settled", d.d1.actual_net_paise, null, true),
+            arithRow("Δ1", d.d1.delta_paise, null, true))),
+        d.exceptions.length ? el("div",{class:"card"},
+          el("h3",{},"Exceptions on this settlement"),
+          el("div",{class:"tablewrap"},el("table",{},el("tbody",{},
+            ...d.exceptions.map(e=>el("tr",{},
+              el("td",{}, el("div",{}, el("span",{class:"chip "+tierClass(e.tier)},e.tier)," ",
+                  el("b",{},e.exception_type)),
+                el("div",{class:"why",style:"color:var(--ink-3);font-size:11.5px;margin-top:3px"},
+                  e.recommended_action)),
+              el("td",{class:"num"},
+                el("div",{},rupees(e.amount_paise)),
+                el("div",{style:"font-size:11px;color:var(--em-700)"},"explained "+rupees(e.explained_paise)),
+                e.unexplained_paise?el("div",{style:"font-size:11px;color:var(--red)"},
+                  "open "+rupees(e.unexplained_paise)):null))))))) : null,
+        d.ground_truth.length ? el("div",{class:"card"},
+          el("h3",{},"Ground truth for this settlement",el("span",{class:"sub"},"what we planted")),
+          el("div",{class:"body"}, ...d.ground_truth.map(g=>el("div",
+            {style:"margin-bottom:10px;font-size:12.5px"},
+            el("div",{}, el("span",{class:"tag"},g.anomaly_type)," ",
+              el("span",{class:"chip "+(g.is_resolvable?"a":"c")},
+                g.is_resolvable?"resolvable":"undiagnosable by design")),
+            el("div",{style:"color:var(--ink-3);margin-top:3px;line-height:1.55"},g.notes)))) ) : null)),
+
+    tabsCard("Detail", {
+      "Payments": paymentsTable(d),
+      "Refunds": refundsTable(d),
+      "Seller payouts": payoutsTable(d),
+      "Adjustments": adjustmentsTable(d),
+      "Bank": bankTable(d),
+      "Ledger": ledgerTable(d),
+      "Matcher trail": matcherTable(d),
+      "Audit": auditTable(d)}));
+}
+function arithRow(label, paise, note, strong){
+  return el("div",{},
+    el("div",{class:"row"+(strong?" tot":"")}, el("div",{class:"l"},label),
+      el("div",{class:"r"}, rupees(paise))),
+    note?el("div",{class:"why"},note):null);
+}
+function explainBlock(kind, deltas, attrs){
+  if(!deltas.length) return null;
+  const d=deltas[0];
+  const mine=attrs.filter(a=>a.delta_id===d.delta_id);
+  const label={D1_COMPUTE:"Δ1 · compute",D2_BANK:"Δ2 · bank",D3_LEDGER:"Δ3 · ledger"}[kind];
+  return el("div",{class:"explain",style:"margin-bottom:18px"},
+    el("div",{class:"row",style:"font-weight:650;color:var(--ink)"},
+      el("div",{class:"l"},label),
+      el("div",{class:"r"}, el("span",{class:"chip "+tierClass(d.tier)},d.tier+" · "+d.status))),
+    el("div",{class:"row"}, el("div",{class:"l"},"Expected"), el("div",{class:"r"},rupees(d.expected_paise))),
+    el("div",{class:"row"}, el("div",{class:"l"},"Actual"), el("div",{class:"r"},rupees(d.actual_paise))),
+    el("div",{class:"row"}, el("div",{class:"l"},"Difference"),
+      el("div",{class:"r"}, rupees(d.delta_paise), d.delta_paise>0?"  short":d.delta_paise<0?"  over":"")),
+    el("div",{class:"sep"}),
+    mine.length? el("div",{}, ...mine.map(a=>el("div",{},
+      el("div",{class:"row"},
+        el("div",{class:"l"}, (a.signed_amount_paise<0?"− ":"− "),
+          a.evidence_type, " ", el("span",{class:"tag"},a.evidence_record_id)),
+        el("div",{class:"r"}, rupees(Math.abs(a.signed_amount_paise)))),
+      el("div",{class:"why"}, ...a.rule_ids.map(r=>el("span",{class:"rule"},r)),
+        el("span",{},a.rationale),
+        a.derivation==="FUZZY"?el("span",{class:"chip b",style:"margin-left:6px"},"fuzzy"):null))))
+      : el("div",{class:"why"}, d.delta_paise===0 ?
+          "Nothing to explain — this delta is exactly zero." :
+          "No source record accounts for this. Zero attributions is the answer, not a failure."),
+    el("div",{class:"sep"}),
+    el("div",{class:"row tot"}, el("div",{class:"l"},"Explained"),
+      el("div",{class:"r"},rupees(d.explained_paise))),
+    el("div",{class:"row tot"}, el("div",{class:"l"},"Unexplained residual"),
+      el("div",{class:"r "+(d.residual_paise===0?"res zero":"res open")},rupees(d.residual_paise))),
+    el("div",{class:"why"}, `Tier ${d.tier} · ${d.status}`));
+}
+function explainD4(deltas, attrs){
+  const open=deltas.filter(d=>d.delta_paise!==0);
+  if(!deltas.length) return null;
+  return el("div",{class:"explain"},
+    el("div",{class:"row",style:"font-weight:650;color:var(--ink)"},
+      el("div",{class:"l"},"Δ4 · seller payout"),
+      el("div",{class:"r"}, el("span",{class:"chip "+(open.length?"c":"a")},
+        `${deltas.length-open.length}/${deltas.length} clean`))),
+    open.length? el("div",{}, ...open.map(d=>{
+      const mine=attrs.filter(a=>a.delta_id===d.delta_id);
+      return el("div",{style:"margin-top:6px"},
+        el("div",{class:"row"},
+          el("div",{class:"l"}, el("span",{class:"tag"},d.subject_id), " owed ",
+            rupees(d.expected_paise), ", paid ", rupees(d.actual_paise)),
+          el("div",{class:"r "+(d.residual_paise===0?"res zero":"res open")},rupees(d.delta_paise))),
+        ...mine.map(a=>el("div",{class:"why"}, ...a.rule_ids.map(r=>el("span",{class:"rule"},r)),
+          a.rationale)),
+        mine.length?null:el("div",{class:"why"},
+          "Nothing explains this gap — escalated, with the seller named and the rupees stated."));
+    })) : el("div",{class:"why"},"Every settled allocation was paid exactly what it was owed."));
+}
+function tabsCard(title, panes){
+  const names=Object.keys(panes).filter(k=>panes[k]);
+  if(!tabsCard._on || !names.includes(tabsCard._on)) tabsCard._on=names[0];
+  const body=el("div",{});
+  const nav=el("div",{class:"filters"});
+  names.forEach(n=>nav.appendChild(el("button",{class:"btn"+(tabsCard._on===n?" primary":""),
+    onclick:()=>{tabsCard._on=n;render()}},n)));
+  body.appendChild(panes[tabsCard._on]);
+  return el("div",{class:"card"}, el("h3",{},title), nav, body);
+}
+function tbl(headers, rows, numeric=[]){
+  if(!rows.length) return el("div",{class:"empty"},"Nothing here.");
+  return el("div",{class:"tablewrap",style:"max-height:460px;overflow-y:auto"},
+    el("table",{}, el("thead",{},el("tr",{},...headers.map(h=>
+      el("th",{class:numeric.includes(h)?"num":""},h)))),
+      el("tbody",{},...rows.map(r=>el("tr",{class:"zebra"},...r.map((c,i)=>
+        el("td",{class:numeric.includes(headers[i])?"num":""}, c)))))));
+}
+function paymentsTable(d){
+  return tbl(["Payment","Method","MDR bps","Amount","Policy fee","Charged fee","Policy GST",
+    "Charged GST","Trace"],
+    d.payments.map(p=>[el("span",{class:"mono"},p.payment_id), p.payment_method,
+      String(p.mdr_bps), rupees(p.amount_paise), rupees(p.policy_fee_paise),
+      el("span",{style:p.charged_fee_paise!==p.policy_fee_paise?"color:var(--red);font-weight:600":""},
+        rupees(p.charged_fee_paise)),
+      rupees(p.policy_tax_paise),
+      el("span",{style:p.charged_tax_paise!==p.policy_tax_paise?"color:var(--red);font-weight:600":""},
+        rupees(p.charged_tax_paise)),
+      el("button",{class:"btn",style:"padding:2px 8px;font-size:11px",
+        onclick:()=>{S.traceQ={type:"payment",id:p.payment_id};S.tab="trace";runTrace()}},"trace")]),
+    ["MDR bps","Amount","Policy fee","Charged fee","Policy GST","Charged GST"]);
+}
+function refundsTable(d){
+  const inItems=new Set(d.itemised_refund_ids);
+  const s=d.settlement;
+  return tbl(["Refund","Payment","Amount","Date","Status","In period?","Deducted here?"],
+    d.refunds.map(r=>{
+      const inPeriod = dt(r.refund_date)>=dt(s.settlement_period_start) &&
+                       dt(r.refund_date)<=dt(s.settlement_period_end);
+      return [el("span",{class:"mono"},r.refund_id), el("span",{class:"mono"},r.payment_id),
+        rupees(r.refund_amount_paise), dt(r.refund_date), r.refund_status,
+        el("span",{class:"chip "+(inPeriod?"a":"n")}, inPeriod?"yes":"no — later settlement"),
+        el("span",{class:"chip "+(inItems.has(r.refund_id)?"a":(inPeriod?"c":"n"))},
+          inItems.has(r.refund_id)?"itemised":(inPeriod?"MISSING":"correctly not"))];}),
+    ["Amount"]);
+}
+function payoutsTable(d){
+  return tbl(["Allocation","Seller","Type","Comm bps","Gross","Commission","Owed (net)","Paid",
+    "Δ4","Tier"],
+    d.allocations.map(a=>[el("span",{class:"mono"},a.allocation_id),
+      el("div",{}, el("div",{},a.seller_name||a.seller_id),
+        el("div",{class:"mono",style:"font-size:11px;color:var(--ink-4)"},a.seller_id)),
+      a.seller_type, String(a.commission_bps||""),
+      rupees(a.gross_allocated_paise), rupees(a.commission_paise), rupees(a.net_seller_paise),
+      el("span",{style:a.paid_paise!==a.net_seller_paise?"color:var(--red);font-weight:600":""},
+        rupees(a.paid_paise)),
+      rupees(a.d4_paise), el("span",{class:"chip "+tierClass(a.d4_tier)},a.d4_tier)]),
+    ["Comm bps","Gross","Commission","Owed (net)","Paid","Δ4"]);
+}
+function adjustmentsTable(d){
+  const inItems=new Set(d.itemised_adjustment_ids);
+  return tbl(["Adjustment","Type","Amount","Status","Refers to","Itemised?","Reason"],
+    d.adjustments.map(a=>[el("span",{class:"mono"},a.adjustment_id), a.adjustment_type,
+      rupees(a.amount_paise), a.status, a.ref_payment_id||"—",
+      el("span",{class:"chip "+(inItems.has(a.adjustment_id)?"a":"c")},
+        inItems.has(a.adjustment_id)?"yes":"no"),
+      el("span",{class:"wrap"},a.reason)]), ["Amount"]);
+}
+function bankTable(d){
+  return tbl(["Bank txn","Date","Credit","UTR on line","Narration"],
+    d.bank.map(b=>[el("span",{class:"mono"},b.bank_transaction_id), dt(b.transaction_date),
+      rupees(b.credit_paise), b.settlement_utr||el("span",{class:"chip n"},"none"),
+      el("span",{class:"mono",style:"font-size:11px"},b.description)]), ["Credit"]);
+}
+function ledgerTable(d){
+  return tbl(["Entry","Group","Account","Dr/Cr","Amount","Payment","Description"],
+    d.ledger.map(l=>[el("span",{class:"mono"},l.ledger_entry_id),
+      el("span",{class:"mono"},l.entry_group_id), l.account,
+      el("span",{class:"chip "+(l.direction==="DR"?"a":"n")},l.direction),
+      rupees(l.amount_paise), el("span",{class:"mono"},l.payment_id||"—"), l.description]),
+    ["Amount"]);
+}
+function matcherTable(d){
+  return tbl(["Pass","Bank txn","Score bps","Selected","Ambiguous"],
+    d.match_candidates.map(c=>[c.pass_name, el("span",{class:"mono"},c.bank_transaction_id),
+      String(c.score_bps),
+      el("span",{class:"chip "+(c.is_selected?"a":"n")},c.is_selected?"selected":"no"),
+      el("span",{class:"chip "+(c.is_ambiguous?"c":"n")},c.is_ambiguous?"refused — ambiguous":"—")]),
+    ["Score bps"]);
+}
+function auditTable(d){
+  return tbl(["#","Action","Decision","Tier","Rules","Inputs → outputs"],
+    d.audit.map(a=>[String(a.audit_id), a.action, a.decision||"—", a.tier||"—",
+      el("span",{},...(a.rule_ids||[]).map(r=>el("span",{class:"rule"},r))),
+      el("span",{class:"mono wrap",style:"font-size:11px;color:var(--ink-3)"},
+        JSON.stringify(a.inputs)+" → "+JSON.stringify(a.outputs))]));
+}
+
+/* ============================== EXCEPTIONS ============================== */
+function viewExceptions(){
+  const f=S.filters;
+  const rows=S.exceptions.filter(e=>
+    (!f.status||e.status===f.status)&&(!f.severity||e.severity===f.severity)&&
+    (!f.kind||e.delta_kind===f.kind)&&
+    (!f.q || (e.exception_type+e.settlement_id+(e.subject_id||"")).toLowerCase()
+              .includes(f.q.toLowerCase())));
+  const open=rows.reduce((a,e)=>a+e.unexplained_paise,0);
+  return el("div",{class:"card"},
+    el("h3",{},"Exceptions",
+      el("span",{class:"sub"},`${rows.length} shown · ${rupees(open)} unexplained`)),
+    el("div",{class:"filters"},
+      el("input",{type:"search",placeholder:"type, settlement, subject…",value:f.q,
+        oninput:e=>{f.q=e.target.value;render()}}),
+      el("label",{},"Status"), sel(["","AUTO_RESOLVED","NEEDS_REVIEW","UNRESOLVED"],f.status,
+        v=>{f.status=v;render()}),
+      el("label",{},"Severity"), sel(["","HIGH","MEDIUM","LOW"],f.severity,v=>{f.severity=v;render()}),
+      el("label",{},"Delta"), sel(["","D1_COMPUTE","D2_BANK","D3_LEDGER","D4_PAYOUT"],f.kind,
+        v=>{f.kind=v;render()})),
+    el("div",{class:"tablewrap",style:"max-height:72vh;overflow-y:auto"},
+      el("table",{},
+        el("thead",{},el("tr",{},...["Exception","What is wrong","Δ","Amount","Explained",
+          "Unexplained","Tier","Recommended action"].map(h=>
+            el("th",{class:["Amount","Explained","Unexplained"].includes(h)?"num":""},h)))),
+        el("tbody",{},...rows.map(e=>el("tr",{class:"clickable zebra",
+            onclick:()=>openSettlement(e.settlement_id)},
+          el("td",{}, el("div",{class:"mono",style:"font-size:11.5px"},e.exception_id),
+            el("div",{class:"mono",style:"font-size:11px;color:var(--ink-4)"},e.settlement_id),
+            e.subject_id?el("div",{class:"mono",style:"font-size:11px;color:var(--ink-4)"},
+              e.subject_id):null),
+          el("td",{}, el("b",{},e.exception_type),
+            el("div",{}, el("span",{class:"chip "+(e.severity==="HIGH"?"c":
+              e.severity==="MEDIUM"?"b":"n")},e.severity), " ",
+              el("span",{class:"chip "+tierClass(e.tier)},e.status))),
+          el("td",{},el("span",{class:"tag"},e.delta_kind.replace("_"," "))),
+          el("td",{class:"num"},rupees(e.amount_paise)),
+          el("td",{class:"num",style:"color:var(--em-700)"},rupees(e.explained_paise)),
+          el("td",{class:"num",style:e.unexplained_paise?"color:var(--red);font-weight:650":""},
+            rupees(e.unexplained_paise)),
+          el("td",{},el("span",{class:"chip "+tierClass(e.tier)},e.tier)),
+          el("td",{class:"wrap",style:"color:var(--ink-2);font-size:12.5px"},
+            e.recommended_action)))))));
+}
+
+/* ================================ SELLERS =============================== */
+function viewSellers(){
+  const rows=S.sellers;
+  return el("div",{class:"card"},
+    el("h3",{},"Seller payout reconciliation (Δ4)",
+      el("span",{class:"sub"},
+        "a settlement can reconcile perfectly while a seller is still short")),
+    el("div",{class:"tablewrap",style:"max-height:74vh;overflow-y:auto"},
+      el("table",{},
+        el("thead",{},el("tr",{},...["Seller","Type","Commission","Status","Settled allocations",
+          "Owed","Paid","Unexplained","Open"].map(h=>
+            el("th",{class:["Settled allocations","Owed","Paid","Unexplained","Open","Commission"]
+              .includes(h)?"num":""},h)))),
+        el("tbody",{},...rows.map(s=>el("tr",{class:"zebra"},
+          el("td",{}, el("div",{},s.seller_name),
+            el("div",{class:"mono",style:"font-size:11px;color:var(--ink-4)"},s.seller_id)),
+          el("td",{},s.seller_type),
+          el("td",{class:"num"}, (s.commission_bps/100).toFixed(2)+"%",
+            el("div",{class:"policy-badge",style:"margin-top:2px"},"demo policy")),
+          el("td",{},el("span",{class:"chip "+(s.status==="ACTIVE"?"a":"b")},s.status)),
+          el("td",{class:"num"},String(s.settled_allocations)),
+          el("td",{class:"num"},compact(s.owed_paise)),
+          el("td",{class:"num"},compact(s.paid_paise)),
+          el("td",{class:"num",style:s.unexplained_paise?"color:var(--red);font-weight:650":""},
+            s.unexplained_paise?rupees(s.unexplained_paise):"₹0.00"),
+          el("td",{},s.unresolved_count?el("span",{class:"chip c"},s.unresolved_count):
+            el("span",{class:"chip a"},"clean"))))))));
+}
+
+/* ================================= TRACE ================================ */
+function viewTrace(){
+  const t=S.trace;
+  const q=S.traceQ;
+  return el("div",{class:"grid",style:"gap:16px"},
+    el("div",{class:"card"},
+      el("h3",{},"Trace money",el("span",{class:"sub"},
+        "one recursive walk over the lineage table — a table, never a node-link diagram")),
+      el("div",{class:"filters"},
+        sel(["payment","settlement","refund","seller_allocation","transfer","bank_transaction",
+          "order","customer"], q.type, v=>{q.type=v;render()}),
+        el("input",{type:"text",placeholder:"e.g. P_01088 or SET_0042",value:q.id,style:"min-width:240px",
+          oninput:e=>{q.id=e.target.value},
+          onkeydown:e=>{if(e.key==="Enter")runTrace()}}),
+        el("button",{class:"btn primary",onclick:runTrace},"Trace"),
+        el("span",{style:"color:var(--ink-3);font-size:12px;margin-left:6px"},"try:"),
+        ...traceExamples())),
+    t? el("div",{class:"card"},
+      el("h3",{},"Lineage for ", el("span",{class:"mono"},t.root.type+" "+t.root.id)),
+      el("div",{class:"body trace"}, traceTree(t))) : null);
+}
+function traceExamples(){
+  const out=[];
+  const clean=S.settlements.find(s=>s.worst_tier==="A" && s.sample_payment_id);
+  if(clean) out.push(["payment", clean.sample_payment_id]);
+  const worst=[...S.settlements].sort((a,b)=>b.unexplained_paise-a.unexplained_paise)[0];
+  if(worst) out.push(["settlement", worst.settlement_id]);
+  const payoutExc=S.exceptions.find(e=>e.delta_kind==="D4_PAYOUT" && e.subject_id);
+  if(payoutExc) out.push(["seller_allocation", payoutExc.subject_id]);
+  return out.map(([t,i])=>el("button",{class:"btn",style:"padding:3px 9px;font-size:11.5px",
+    onclick:()=>{S.traceQ={type:t,id:i};runTrace()}}, i));
+}
+function traceTree(t){
+  const label=(type,id)=>{
+    const n=t.nodes[type+":"+id]||{};
+    const bits=[];
+    if(n.amount_paise!==undefined)bits.push(rupees(n.amount_paise));
+    if(n.credit_paise!==undefined)bits.push("+"+rupees(n.credit_paise));
+    if(n.gross_allocated_paise!==undefined)
+      bits.push(`gross ${rupees(n.gross_allocated_paise)} · commission `+
+        `${rupees(n.commission_paise)} · net ${rupees(n.net_seller_paise)}`);
+    if(n.refund_amount_paise!==undefined)bits.push("−"+rupees(n.refund_amount_paise));
+    if(n.net_settlement_amount_paise!==undefined)bits.push(rupees(n.net_settlement_amount_paise));
+    if(n.order_amount_paise!==undefined)bits.push(rupees(n.order_amount_paise));
+    if(n.payment_status)bits.push(n.payment_status);
+    if(n.payment_method)bits.push(n.payment_method);
+    if(n.transfer_status)bits.push(n.transfer_status);
+    if(n.refund_status)bits.push(n.refund_status);
+    if(n.settlement_status)bits.push(n.settlement_status);
+    if(n.settlement_utr)bits.push("UTR "+n.settlement_utr);
+    if(n.captured_at)bits.push(dt(n.captured_at));
+    if(n.refund_date)bits.push(dt(n.refund_date));
+    if(n.transaction_date)bits.push(dt(n.transaction_date));
+    if(n.settlement_date)bits.push(dt(n.settlement_date));
+    if(n.name)bits.push(n.name);
+    return bits.join(" · ");
+  };
+  const line=(e,dir)=>el("div",{class:"line"},
+    el("span",{class:"kind"}, e.edge_kind),
+    el("span",{class:"id"}, e.dst_type+" "+e.dst_id),
+    el("span",{class:"meta"}, label(e.dst_type, e.dst_id)),
+    el("span",{class:"amt"}, e.amount_paise!==null?rupees(e.amount_paise):""));
+  const groups={}, dseen=new Set();
+  for(const e of t.downstream){
+    // A settlement's own POSTED_AS edges fan out to every payment in the batch
+    // window. When the story starts at one payment, that is noise -- the
+    // payment's own POSTED_AS edges already carry its postings.
+    if(t.root.type!=="settlement" && e.src_type==="settlement" && e.edge_kind==="POSTED_AS")
+      continue;
+    const k=e.depth+"|"+e.dst_type+":"+e.dst_id+"|"+e.edge_kind;
+    if(dseen.has(k)) continue; dseen.add(k);
+    (groups[e.depth] ||= []).push(e);
+  }
+  const out=el("div",{});
+  if(t.upstream.length){
+    const seen=new Set(), uniq=[];
+    for(const e of t.upstream){ const k=e.src_type+":"+e.src_id;
+      if(!seen.has(k)){seen.add(k);uniq.push(e);} }
+    const CAP=20, shown=uniq.slice(0,CAP);
+    out.appendChild(el("div",{style:"color:var(--ink-3);margin-bottom:6px"},
+      "Upstream — what fed into this ("+uniq.length+" distinct record"+
+      (uniq.length===1?"":"s")+")"));
+    const u=el("div",{class:"node"});
+    for(const e of shown) u.appendChild(el("div",{class:"line"},
+      el("span",{class:"kind"},e.edge_kind), el("span",{class:"id"},e.src_type+" "+e.src_id),
+      el("span",{class:"meta"},label(e.src_type,e.src_id)),
+      el("span",{class:"amt"}, e.amount_paise!==null?rupees(e.amount_paise):"")));
+    if(uniq.length>CAP) u.appendChild(el("div",{class:"line"},
+      el("span",{class:"meta"},"+ "+(uniq.length-CAP)+" more upstream records — trace a single "+
+        "payment for the readable version of this story")));
+    out.appendChild(u);
+  }
+  if(!t.downstream.length){ out.appendChild(el("div",{style:"color:var(--ink-3);margin:12px 0 6px"},
+    "Downstream")); out.appendChild(el("div",{class:"node"}, el("div",{class:"line"},
+    el("span",{class:"meta"},"Nothing flows out of this record. For a FAILED payment that is the "+
+      "correct answer -- it never reached a settlement, an allocation or the bank.")))); return out; }
+  out.appendChild(el("div",{style:"color:var(--ink-3);margin:12px 0 6px"},
+    "Downstream — "+t.root.type+" "+t.root.id+" "+label(t.root.type,t.root.id)));
+  Object.keys(groups).sort((a,b)=>a-b).forEach(depth=>{
+    const box=el("div",{class:"node",style:`margin-left:${(depth-1)*16}px`});
+    // repetitive kinds (ledger postings, mostly) collapse into one summary line
+    const byKind={};
+    for(const e of groups[depth]) (byKind[e.edge_kind] ||= []).push(e);
+    for(const [kind,rows] of Object.entries(byKind)){
+      if(rows.length<=4){ for(const e of rows) box.appendChild(line(e)); continue; }
+      const total=rows.reduce((a,e)=>a+(e.amount_paise||0),0);
+      const d=el("details",{});
+      d.appendChild(el("summary",{style:"cursor:pointer;padding-left:14px"},
+        el("span",{class:"kind"},kind), " ",
+        el("span",{class:"meta"}, rows.length+" "+rows[0].dst_type+" records"),
+        el("span",{class:"amt",style:"float:right"}, rupees(total))));
+      const inner=el("div",{});
+      for(const e of rows.slice(0,60)) inner.appendChild(line(e));
+      if(rows.length>60) inner.appendChild(el("div",{class:"line"},
+        el("span",{class:"meta"},"+ "+(rows.length-60)+" more")));
+      d.appendChild(inner);
+      box.appendChild(d);
+    }
+    out.appendChild(box);
+  });
+  return out;
+}
+
+/* ================================ RENDER =============================== */
+const TABS=[["dashboard","Dashboard"],["settlements","Settlements"],["detail","Settlement detail"],
+  ["exceptions","Exceptions"],["sellers","Seller payouts"],["trace","Trace money"]];
+function render(){
+  const nav=$("#tabs"); nav.innerHTML="";
+  for(const [k,label] of TABS){
+    if(k==="detail" && !S.detail && !S.sid) continue;
+    nav.appendChild(el("button",{class:S.tab===k?"on":"",onclick:()=>{S.tab=k;render()}},label));
+  }
+  const sel_=$("#runsel"); sel_.innerHTML="";
+  for(const r of S.runs){
+    const o=el("option",{value:r.run_id},
+      `${r.label||"run"} · ${String(r.started_at).slice(0,19).replace("T"," ")} · ${r.run_id.slice(0,8)}`);
+    if(S.run && r.run_id===S.run.run_id)o.selected=true;
+    sel_.appendChild(o);
+  }
+  const app=$("#app"); app.innerHTML="";
+  if(!S.run){ app.appendChild(el("div",{class:"empty"},
+    "No reconciliation runs yet. Generate a dataset, then run reconciliation.")); }
+  else if(S.busy && !S.detail && S.tab==="detail"){
+    app.appendChild(el("div",{class:"empty"},el("span",{class:"spin"})," loading settlement…"));
+  } else {
+    const v={dashboard:viewDashboard,settlements:viewSettlements,detail:viewDetail,
+      exceptions:viewExceptions,sellers:viewSellers,trace:viewTrace}[S.tab];
+    app.appendChild(v());
+  }
+  document.querySelectorAll(".toast").forEach(n=>n.remove());
+  if(S.toast) document.body.appendChild(el("div",{class:"toast"},S.toast));
+}
+
+/* ---------------------------------------------------------------- events */
+$("#runsel").addEventListener("change", e=>selectRun(e.target.value));
+$("#btn-generate").addEventListener("click", async ()=>{
+  const b=$("#btn-generate"); b.disabled=true; b.textContent="Generating…";
+  try{
+    const seed=Number(prompt("Seed (the dataset is byte-identical for a given seed):","42")||42);
+    const r=await api("/api/datasets",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({seed, settlements:100, label:"demo"})});
+    toast(`Dataset ${r.dataset_id.slice(0,8)} · `+
+      `${r.row_counts.total_financial_records.toLocaleString()} records · `+
+      `${r.planted_anomalies} planted anomalies`);
+    window.__lastDataset=r.dataset_id;
+  }catch(e){toast(e.message)}
+  b.disabled=false; b.textContent="Generate dataset";
+});
+$("#btn-tick").addEventListener("click", async ()=>{
+  const b=$("#btn-tick"); b.disabled=true; b.textContent="Simulating…";
+  try{
+    const ds=await api("/api/datasets");
+    const target=(S.run&&S.run.dataset_id) || window.__lastDataset || (ds[0]&&ds[0].dataset_id);
+    if(!target){toast("Generate a dataset first.");}
+    else{
+      const r=await api(`/api/datasets/${target}/tick`,{method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({settlements:10, clean:false, reconcile:true})});
+      window.__lastDataset=target;
+      S.runs=await api("/api/runs");
+      if(r.run){ await selectRun(r.run.run_id); S.tab="dashboard"; }
+      const bits=[`Cycle ${r.batch} · ${r.appended.settlements} new settlements`,
+                  `${r.appended.total_financial_records.toLocaleString()} records`,
+                  `${r.appended.ground_truth_anomalies} planted`];
+      if(r.late_refunds) bits.push(`${r.late_refunds} late refunds on closed settlements`);
+      if(r.bank_credits_resolved) bits.push(`${r.bank_credits_resolved} in-flight credit landed`);
+      toast(bits.join(" · "));
+    }
+  }catch(e){toast(e.message)}
+  b.disabled=false; b.textContent="Simulate next cycle";
+});
+$("#btn-run").addEventListener("click", async ()=>{
+  const b=$("#btn-run"); b.disabled=true; b.textContent="Reconciling…";
+  try{
+    const ds=await api("/api/datasets");
+    const target=window.__lastDataset || (ds[0]&&ds[0].dataset_id);
+    if(!target){toast("Generate a dataset first.");}
+    else{
+      const m=await api("/api/runs",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({dataset_id:target})});
+      S.runs=await api("/api/runs");
+      await selectRun(m.run_id);
+      S.tab="dashboard";
+      toast(`Reconciled in ${m.throughput.elapsed_seconds}s · `+
+        `${m.accuracy.amount_at_risk_display} at risk`);
+    }
+  }catch(e){toast(e.message)}
+  b.disabled=false; b.textContent="Run reconciliation";
+});
+boot().catch(e=>{ $("#app").innerHTML=""; $("#app").appendChild(
+  el("div",{class:"empty"},"Could not reach the API: "+e.message)); });
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "fixture_id": "M06_chargeback_adjustment",
+  "title": "Chargeback adjustment explains the full gap (golden test 5)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M06_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000106"
+  },
+  "payments": [
+    {
+      "payment_id": "M06_P1",
+      "payment_method": "UPI",
+      "amount_paise": 600000,
+      "captured_at": "2026-08-11",
+      "policy_fee_paise": 0,
+      "policy_tax_paise": 0,
+      "derivation": "MDR.UPI = 0bps"
+    }
+  ],
+  "refunds": [],
+  "adjustments": [
+    {
+      "adjustment_id": "M06_ADJ1",
+      "adjustment_type": "CHARGEBACK",
+      "amount_paise": -75000,
+      "status": "APPLIED",
+      "settlement_id": "M06_SET",
+      "present_in_settlement_items": false,
+      "derivation": "signed: negative = deduction. Exists in adjustments table naming this settlement, but the gateway omitted the ADJUSTMENT line from settlement_items"
+    }
+  ],
+  "expected": {
+    "gross_paise": 600000,
+    "refunds_paise": 0,
+    "computed_fee_paise": 0,
+    "computed_tax_paise": 0,
+    "adjustments_paise": 0,
+    "derivation_adjustments": "item-derived and the item is missing -> 0. (Adjustments are item-derived, unlike refunds: an adjustment has no policy-derivable settlement assignment, so adjustments.settlement_id is the claim being audited, not an input to it.)",
+    "expected_net_paise": 600000,
+    "derivation_net": "600000 - 0 - 0 - 0 + 0",
+    "actual_net_paise": 525000,
+    "derivation_actual": "600000 - 75000; the money WAS deducted, just not itemised",
+    "d1_paise": 75000,
+    "derivation_d1": "600000 - 525000",
+    "attributions": [
+      {
+        "rule": "ATTR.ADJUSTMENT",
+        "evidence_type": "adjustment",
+        "evidence_record_id": "M06_ADJ1",
+        "signed_amount_paise": 75000,
+        "derivation": "|-75000| chargeback found in the adjustments source table for this settlement"
+      }
+    ],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "EXPLAINED",
+    "exception_type": "ADJUSTMENT_UNEXPLAINED"
+  }
+}

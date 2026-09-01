@@ -1,0 +1,77 @@
+{
+  "fixture_id": "M01_clean",
+  "title": "Perfectly clean settlement (golden test 1)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M01_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000101"
+  },
+  "payments": [
+    {
+      "payment_id": "M01_P1",
+      "payment_method": "UPI",
+      "amount_paise": 1250000,
+      "captured_at": "2026-08-11",
+      "policy_fee_paise": 0,
+      "policy_tax_paise": 0,
+      "derivation": "MDR.UPI@1.0.0 = 0bps -> fee 0; GST on fee 0 = 0"
+    },
+    {
+      "payment_id": "M01_P2",
+      "payment_method": "CARD",
+      "amount_paise": 840000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 16800,
+      "policy_tax_paise": 3024,
+      "derivation": "MDR.CARD@1.0.0 = 200bps -> (840000*200+5000)//10000 = 16800; GST 1800bps -> (16800*1800+5000)//10000 = 3024"
+    },
+    {
+      "payment_id": "M01_P3",
+      "payment_method": "NETBANKING",
+      "amount_paise": 500000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 8750,
+      "policy_tax_paise": 1575,
+      "derivation": "MDR.NETBANKING@1.0.0 = 175bps -> (500000*175+5000)//10000 = 8750; GST -> (8750*1800+5000)//10000 = 1575"
+    }
+  ],
+  "refunds": [
+    {
+      "refund_id": "M01_R1",
+      "payment_id": "M01_P2",
+      "refund_amount_paise": 140000,
+      "refund_date": "2026-08-13",
+      "refund_status": "PROCESSED",
+      "in_period": true,
+      "derivation": "inside [2026-08-10, 2026-08-14] -> deductible from this settlement"
+    }
+  ],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 2590000,
+    "derivation_gross": "1250000 + 840000 + 500000",
+    "refunds_paise": 140000,
+    "derivation_refunds": "single in-period PROCESSED refund",
+    "computed_fee_paise": 25550,
+    "derivation_fee": "0 + 16800 + 8750 (PER_ITEM, never on aggregate)",
+    "computed_tax_paise": 4599,
+    "derivation_tax": "0 + 3024 + 1575 (PER_ITEM per rounding.tax_computation)",
+    "adjustments_paise": 0,
+    "expected_net_paise": 2419851,
+    "derivation_net": "2590000 - 140000 - 25550 - 4599 + 0",
+    "actual_net_paise": 2419851,
+    "d1_paise": 0,
+    "d2_paise": 0,
+    "d3_paise": 0,
+    "d4_paise": 0,
+    "attributions": [],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "MATCHED",
+    "note": "refunds.mdr_refunded = false -> the 16800 fee on P2 is NOT reversed by the 140000 refund"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "fixture_id": "M08_phantom_debit",
+  "title": "Shortfall with no linked record anywhere -- must escalate (golden test 12)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M08_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000108"
+  },
+  "payments": [
+    {
+      "payment_id": "M08_P1",
+      "payment_method": "CARD",
+      "amount_paise": 1000000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 20000,
+      "policy_tax_paise": 3600,
+      "derivation": "(1000000*200+5000)//10000 = 20000; (20000*1800+5000)//10000 = 3600"
+    }
+  ],
+  "refunds": [],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 1000000,
+    "refunds_paise": 0,
+    "computed_fee_paise": 20000,
+    "computed_tax_paise": 3600,
+    "adjustments_paise": 0,
+    "expected_net_paise": 976400,
+    "actual_net_paise": 929100,
+    "d1_paise": 47300,
+    "derivation_d1": "976400 - 929100. There is no refund, no adjustment, no fee drift and no rollup error. Nothing in any source table accounts for it.",
+    "attributions": [],
+    "residual_paise": 47300,
+    "tier": "C",
+    "status": "UNRESOLVED",
+    "exception_type": "UNEXPLAINED_SHORTFALL",
+    "note": "ZERO attributions is the correct answer. Reporting Rs 473.00 as unexplained beats inventing a cause."
+  }
+}

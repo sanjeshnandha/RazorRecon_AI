@@ -1,0 +1,64 @@
+{
+  "fixture_id": "M07_header_rollup_mismatch",
+  "title": "Settlement header gross != sum of items (INV-B6)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M07_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000107",
+    "header_gross_amount_paise": 390000,
+    "derivation_header": "header CLAIMS 390000 while the items sum to 400000 -- a 10000 rollup error"
+  },
+  "payments": [
+    {
+      "payment_id": "M07_P1",
+      "payment_method": "CARD",
+      "amount_paise": 250000,
+      "captured_at": "2026-08-11",
+      "policy_fee_paise": 5000,
+      "policy_tax_paise": 900,
+      "derivation": "(250000*200+5000)//10000 = 5000; (5000*1800+5000)//10000 = 900"
+    },
+    {
+      "payment_id": "M07_P2",
+      "payment_method": "UPI",
+      "amount_paise": 150000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 0,
+      "policy_tax_paise": 0,
+      "derivation": "MDR.UPI = 0bps"
+    }
+  ],
+  "refunds": [],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 400000,
+    "derivation_gross": "250000 + 150000, from ITEMS which are the source of truth",
+    "refunds_paise": 0,
+    "computed_fee_paise": 5000,
+    "computed_tax_paise": 900,
+    "adjustments_paise": 0,
+    "expected_net_paise": 394100,
+    "derivation_net": "400000 - 0 - 5000 - 900",
+    "actual_net_paise": 384100,
+    "derivation_actual": "header 390000 - 5000 - 900, internally consistent with its own wrong gross",
+    "d1_paise": 10000,
+    "derivation_d1": "394100 - 384100",
+    "attributions": [
+      {
+        "rule": "ATTR.ROLLUP_MISMATCH",
+        "evidence_type": "rollup",
+        "evidence_record_id": "M07_SET",
+        "signed_amount_paise": 10000,
+        "derivation": "items gross 400000 - header gross 390000"
+      }
+    ],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "EXPLAINED",
+    "exception_type": "HEADER_ROLLUP_MISMATCH"
+  }
+}

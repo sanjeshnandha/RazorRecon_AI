@@ -1,0 +1,62 @@
+{
+  "fixture_id": "M02_fee_rate_drift",
+  "title": "Fee charged at 250bps instead of policy 200bps (golden test 2)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M02_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000102"
+  },
+  "payments": [
+    {
+      "payment_id": "M02_P1",
+      "payment_method": "CARD",
+      "amount_paise": 1000000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 20000,
+      "policy_tax_paise": 3600,
+      "charged_fee_paise": 25000,
+      "charged_tax_paise": 4500,
+      "derivation": "policy: (1000000*200+5000)//10000 = 20000, GST (20000*1800+5000)//10000 = 3600. charged: (1000000*250+5000)//10000 = 25000, GST (25000*1800+5000)//10000 = 4500"
+    }
+  ],
+  "refunds": [],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 1000000,
+    "refunds_paise": 0,
+    "computed_fee_paise": 20000,
+    "computed_tax_paise": 3600,
+    "adjustments_paise": 0,
+    "expected_net_paise": 976400,
+    "derivation_net": "1000000 - 0 - 20000 - 3600",
+    "actual_net_paise": 970500,
+    "derivation_actual": "1000000 - 25000 - 4500 (gateway used 250bps and taxed its own inflated fee)",
+    "d1_paise": 5900,
+    "derivation_d1": "976400 - 970500 = 5900 short",
+    "attributions": [
+      {
+        "rule": "ATTR.FEE_RATE",
+        "evidence_type": "fee",
+        "evidence_record_id": "M02_P1",
+        "signed_amount_paise": 5000,
+        "derivation": "25000 charged - 20000 policy"
+      },
+      {
+        "rule": "ATTR.FEE_RATE",
+        "evidence_type": "tax_on_fee",
+        "evidence_record_id": "M02_P1",
+        "signed_amount_paise": 900,
+        "derivation": "4500 charged GST - 3600 policy GST; the tax consequence of the same drift"
+      }
+    ],
+    "residual_paise": 0,
+    "derivation_residual": "5900 - (5000 + 900) = 0",
+    "tier": "A",
+    "status": "EXPLAINED",
+    "exception_type": "FEE_RATE_MISMATCH"
+  }
+}

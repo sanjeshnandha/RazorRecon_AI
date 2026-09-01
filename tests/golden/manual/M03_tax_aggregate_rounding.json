@@ -1,0 +1,76 @@
+{
+  "fixture_id": "M03_tax_aggregate_rounding",
+  "title": "GST computed on aggregated fee instead of PER_ITEM (golden test 3)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M03_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000103"
+  },
+  "payments": [
+    {
+      "payment_id": "M03_P1",
+      "payment_method": "CARD",
+      "amount_paise": 123457,
+      "captured_at": "2026-08-11",
+      "policy_fee_paise": 2469,
+      "policy_tax_paise": 444,
+      "derivation": "(123457*200+5000)//10000 = 24696400//10000 = 2469; (2469*1800+5000)//10000 = 4449200//10000 = 444"
+    },
+    {
+      "payment_id": "M03_P2",
+      "payment_method": "NETBANKING",
+      "amount_paise": 76543,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 1340,
+      "policy_tax_paise": 241,
+      "derivation": "(76543*175+5000)//10000 = 13400025//10000 = 1340; (1340*1800+5000)//10000 = 2417000//10000 = 241"
+    },
+    {
+      "payment_id": "M03_P3",
+      "payment_method": "WALLET",
+      "amount_paise": 55555,
+      "captured_at": "2026-08-13",
+      "policy_fee_paise": 1111,
+      "policy_tax_paise": 200,
+      "derivation": "(55555*200+5000)//10000 = 11116000//10000 = 1111; (1111*1800+5000)//10000 = 2004800//10000 = 200"
+    }
+  ],
+  "refunds": [],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 255555,
+    "derivation_gross": "123457 + 76543 + 55555",
+    "refunds_paise": 0,
+    "computed_fee_paise": 4920,
+    "derivation_fee": "2469 + 1340 + 1111",
+    "computed_tax_paise": 885,
+    "derivation_tax": "PER_ITEM: 444 + 241 + 200 = 885",
+    "aggregate_tax_paise": 886,
+    "derivation_aggregate": "WRONG method the gateway used: (4920*1800+5000)//10000 = 8861000//10000 = 886",
+    "adjustments_paise": 0,
+    "expected_net_paise": 249750,
+    "derivation_net": "255555 - 0 - 4920 - 885",
+    "actual_net_paise": 249749,
+    "derivation_actual": "255555 - 4920 - 886",
+    "d1_paise": 1,
+    "derivation_d1": "249750 - 249749 = 1 paise short",
+    "attributions": [
+      {
+        "rule": "ATTR.TAX_ROUNDING",
+        "evidence_type": "tax",
+        "evidence_record_id": "M03_SET",
+        "signed_amount_paise": 1,
+        "derivation": "886 aggregate GST - 885 per-item GST"
+      }
+    ],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "EXPLAINED",
+    "exception_type": "TAX_ROUNDING_MISMATCH",
+    "note": "one paise. It still has to reconcile to zero, and it does."
+  }
+}

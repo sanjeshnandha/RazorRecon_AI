@@ -1,0 +1,26 @@
+# PostgreSQL 16 for local development.
+#
+#   docker compose up -d
+#
+# Nothing else in this project needs Docker. The API, generator and engine are
+# plain Python; only the database runs in a container.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: finctl-db
+    environment:
+      POSTGRES_USER: finctl
+      POSTGRES_PASSWORD: finctl
+      POSTGRES_DB: finctl
+    ports:
+      - "5433:5432"
+    volumes:
+      - finctl-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finctl -d finctl"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  finctl-pgdata:

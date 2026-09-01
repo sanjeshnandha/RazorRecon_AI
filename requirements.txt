@@ -1,0 +1,6 @@
+psycopg[binary]>=3.2
+fastapi>=0.115
+uvicorn[standard]>=0.30
+PyYAML>=6.0
+pydantic>=2.7
+pytest>=8.0

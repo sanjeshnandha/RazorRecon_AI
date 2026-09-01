@@ -1,0 +1,73 @@
+{
+  "fixture_id": "M04_refund_not_deducted",
+  "title": "In-period PROCESSED refund missing from settlement items (golden test 4)",
+  "hand_worked_by": "human, from policy.yaml v1.0.0, no code",
+  "settlement": {
+    "settlement_id": "M04_SET",
+    "settlement_date": "2026-08-18",
+    "settlement_period_start": "2026-08-10",
+    "settlement_period_end": "2026-08-14",
+    "settlement_status": "PROCESSED",
+    "settlement_utr": "N226081800000104"
+  },
+  "payments": [
+    {
+      "payment_id": "M04_P1",
+      "payment_method": "UPI",
+      "amount_paise": 500000,
+      "captured_at": "2026-08-11",
+      "policy_fee_paise": 0,
+      "policy_tax_paise": 0,
+      "derivation": "MDR.UPI = 0bps"
+    },
+    {
+      "payment_id": "M04_P2",
+      "payment_method": "CARD",
+      "amount_paise": 300000,
+      "captured_at": "2026-08-12",
+      "policy_fee_paise": 6000,
+      "policy_tax_paise": 1080,
+      "derivation": "(300000*200+5000)//10000 = 6000; (6000*1800+5000)//10000 = 1080"
+    }
+  ],
+  "refunds": [
+    {
+      "refund_id": "M04_R1",
+      "payment_id": "M04_P1",
+      "refund_amount_paise": 200000,
+      "refund_date": "2026-08-13",
+      "refund_status": "PROCESSED",
+      "in_period": true,
+      "present_in_settlement_items": false,
+      "derivation": "exists in source, inside period -> MUST be deducted; it was not"
+    }
+  ],
+  "adjustments": [],
+  "expected": {
+    "gross_paise": 800000,
+    "refunds_paise": 200000,
+    "derivation_refunds": "source-derived, not item-derived: the refund is absent from items, which is precisely the defect",
+    "computed_fee_paise": 6000,
+    "computed_tax_paise": 1080,
+    "adjustments_paise": 0,
+    "expected_net_paise": 592920,
+    "derivation_net": "800000 - 200000 - 6000 - 1080",
+    "actual_net_paise": 792920,
+    "derivation_actual": "800000 - 0 - 6000 - 1080; the refund was never taken off",
+    "d1_paise": -200000,
+    "derivation_d1": "592920 - 792920 = -200000, i.e. the merchant was OVERPAID by Rs 2,000",
+    "attributions": [
+      {
+        "rule": "ATTR.REFUND_OMITTED",
+        "evidence_type": "refund",
+        "evidence_record_id": "M04_R1",
+        "signed_amount_paise": -200000,
+        "derivation": "the exact refund that should have been deducted"
+      }
+    ],
+    "residual_paise": 0,
+    "tier": "A",
+    "status": "EXPLAINED",
+    "exception_type": "REFUND_NOT_DEDUCTED"
+  }
+}
