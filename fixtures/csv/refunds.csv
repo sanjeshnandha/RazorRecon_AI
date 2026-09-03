@@ -1,0 +1,4 @@
+refund_id,payment_id,refund_amount_paise,refund_status,refund_date,refund_reason
+EV03_R1,EV03_P1,300000,PROCESSED,2026-02-07,evaluation batch
+EV06_R1,EV06_P1,400000,PROCESSED,2026-02-13,evaluation batch
+EV07_R1,EV07_P1,150000,PROCESSED,2026-02-16,evaluation batch

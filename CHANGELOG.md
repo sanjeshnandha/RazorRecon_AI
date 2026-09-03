@@ -34,11 +34,11 @@ the results without being able to change them.
 Six dependencies: `psycopg`, `fastapi`, `uvicorn`, `PyYAML`, `pydantic`, `pytest`.
 No ORM, no npm, no vendor AI SDK. All money is `BIGINT` paise — never floats.
 
-**Tests: 193, all passing.**
+**Tests: 201, all passing.**
 
 | file | n | covers |
 |---|---:|---|
-| `test_evaluation_batch.py` | 56 | the static batch: every scenario's stated delta, tier and exception |
+| `test_evaluation_batch.py` | 64 | the static batch: every scenario's stated delta, tier and exception, plus the CSV export |
 | `test_agent.py` | 41 | agent tools, scoping, injection refusal, citation guard, storage |
 | `test_golden.py` | 30 | the 19 golden scenarios |
 | `test_append.py` | 19 | append mode: tiling, id sequences, late refunds, clean-append zero |
@@ -70,6 +70,7 @@ make db-up && make schema && make generate   # first-time setup
 make serve                                   # http://localhost:8000
 make tick                                    # +10 settlements, re-reconcile
 make evaluation-batch                        # load the fixed 22-scenario batch
+make evaluation-csv                          # export it to fixtures/csv/
 make agent-schema                            # add the agent table to a LIVE db
 make db-summary / make db-shell              # inspect the database
 make test                                    # 193 tests
@@ -81,6 +82,7 @@ make test                                    # 193 tests
 engine/       13 modules — the deterministic reconciliation engine (unchanged this session)
 generator/    seeded dataset generation + append mode (origin.py, append.py are new)
 fixtures/     the static evaluation batch: authoring.py, loader.py, evaluation_batch.json
+              plus export_csv.py and csv/ — the same batch as 15 flat files
 agent/        the investigation agent: llm.py, tools.py, investigator.py, store.py
 api/          FastAPI app + browse.py (Data tab) + the single-file SPA in static/
 db/           schema.sql (destructive), indexes.sql, agent.sql (idempotent)
@@ -97,6 +99,81 @@ these are not Razorpay's real terms, so that notice stays.
 
 **Header buttons.** Generate dataset · Simulate next cycle · Evaluation batch ·
 Run reconciliation
+
+---
+
+## 2026-09-03 — Gave the evaluation batch a real population
+
+**The problem.** One customer behind all 35 payments, two sellers, and seller
+money moving on only 2 of 22 settlements. It reconciled perfectly and looked
+nothing like a book anyone kept. The single customer was a placeholder inherited
+from the Phase-0 fixture loader, where the point was arithmetic, not people —
+and it was hardcoded in `loader.py` rather than being data.
+
+**What changed.**
+
+- **26 named customers**, assigned per order, spread across the batch. The
+  busiest has four payments; the retried order keeps one customer across all
+  three attempts, because a person does not change between retries.
+- **6 sellers spanning all three commission tiers** the policy defines —
+  INDIVIDUAL at 1500 bps was previously absent entirely, so a bug in that tier
+  could not have shown up here. One seller is SUSPENDED, which a real roster
+  always has.
+- **Orders have their own identity** (`ORD_0001…`) instead of being derived from
+  the payment id.
+- **25 allocations across 16 settlements**, all paid correctly. Δ₄ previously had
+  two data points and both were defects; these are the controls that make EV18
+  and EV19 mean something.
+
+**Files.** `fixtures/authoring.py`, `fixtures/loader.py`,
+`fixtures/evaluation_batch.json`, `fixtures/csv/*`,
+`tests/test_evaluation_batch.py`.
+
+**Verified.** All **22 scenarios still match their stated deltas, tiers and
+exception types** — the added realism changed no expected outcome — and the
+honesty metrics are unchanged at 100% detection, 100% diagnosis, 100%
+escalation, 3/3 traps, 0 false auto-resolutions. Five new tests pin the
+population so it cannot regress to a placeholder: a minimum customer count,
+one customer per retried order, every commission tier represented, seller money
+moving on at least half the settlements, and allocations never exceeding their
+payment. **201 tests passing** (was 196).
+
+**Record count is now 345** (was 301), still one dataset, still no randomness.
+
+---
+
+## 2026-09-03 — CSV export of the evaluation batch
+
+**What.** `fixtures/csv/` — the static batch as 15 flat files, one per table,
+**992 rows** covering the 345 financial records. `make evaluation-csv` or
+`./run.sh evaluation-csv` regenerates them.
+
+**Why.** So the batch can be read without a database: opened in Excel, diffed in
+git, or loaded into another system by an evaluator who wants to check the engine
+against their own arithmetic.
+
+**How it is produced.** Dumped from the database *after* the batch is loaded, so
+the files are the same rows the engine reconciles — not a second rendering of the
+JSON that could drift from it. Loading is idempotent, so the export is safe to
+run at any time.
+
+**`scenarios.csv` is the entry point** — one row per settlement with its family,
+what was done to it, and the expected `d1..d4` deltas, worst tier and exception
+types. Everything else is the data those expectations are about.
+
+**Two deliberate choices.** Money stays in **integer paise**; converting to
+rupees would put a second representation of the same number in the file and
+invite someone to reconcile against the rounded one. And `dataset_id` is dropped
+— the same constant on every row, carrying no information in a flat file.
+
+**Files.** New: `fixtures/export_csv.py`, `fixtures/csv/` (15 CSVs +
+`README.md`). Changed: `Makefile.txt`, `run.sh`, `tests/test_evaluation_batch.py`.
+
+**Verified.** Every file parses as well-formed CSV with uniform column counts.
+Three new tests: the export matches the batch and the database row-for-row, the
+constant `dataset_id` is absent, and every `*_paise` value is still an integer —
+a decimal point anywhere would mean something converted to rupees on the way out.
+**196 tests passing** (was 193).
 
 ---
 
@@ -188,7 +265,7 @@ The SPA is 2.9 KB smaller.
 
 ## 2026-09-02 — Static evaluation batch
 
-**What.** A fixed, hand-authored batch of **22 settlements / 301 financial
+**What.** A fixed, hand-authored batch of **22 settlements / 345 financial
 records** with every expected outcome written down beside the data. Constant
 `dataset_id`, so loading twice replaces rather than accumulates. Reachable from
 the **Evaluation batch** header button, `POST /api/fixtures/evaluation-batch`, or

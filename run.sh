@@ -9,6 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Load environment variables (API keys)
 if [ -f .env ]; then
   set -a
   source .env
@@ -46,6 +47,7 @@ agent_schema(){ psql "$DATABASE_URL" -q -f db/agent.sql
               echo "agent_transcripts ready."; }
 reconcile() { python3.12 -m scripts.reconcile; }
 evalbatch() { python3.12 -m fixtures.loader; }
+evalcsv()   { python3.12 -m fixtures.export_csv; }
 tick()      { python3.12 -m generator.append --settlements "${TICK:-10}" \
                 ${DATASET:+--dataset "$DATASET"}; }
 tests()     { python3.12 -m pytest tests/ -q; }
@@ -67,10 +69,11 @@ case "${1:-help}" in
   db-summary)     db_summary ;;
   tick)           tick ;;
   evaluation-batch) evalbatch ;;
+  evaluation-csv) evalcsv ;;
   test)           tests ;;
   web)            web ;;
   serve)          serve ;;
   demo)           demo ;;
-  *)  grep -E '^\s+(install|db-up|db-down|db-shell|db-summary|schema|agent-schema|generate|generate-clean|reconcile|tick|evaluation-batch|test|web|serve|demo)\)' "$0" \
+  *)  grep -E '^\s+(install|db-up|db-down|db-shell|db-summary|schema|agent-schema|generate|generate-clean|reconcile|tick|evaluation-batch|evaluation-csv|test|web|serve|demo)\)' "$0" \
         | sed 's/).*//' | sed 's/^/  ./run.sh /' ;;
 esac

@@ -1,0 +1,2 @@
+adjustment_id,settlement_id,adjustment_type,amount_paise,reason,created_at,status,ref_payment_id
+EV09_A1,EV_09,CHARGEBACK,-90000,CHARGEBACK on EV_09,2026-02-21 05:30:00+00:00,APPLIED,EV09_P1

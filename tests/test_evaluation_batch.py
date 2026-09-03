@@ -199,6 +199,132 @@ def test_the_batch_matches_the_policy_it_claims(batch_run):
         "`python -m fixtures.authoring` and re-check the expected figures")
 
 
+# -------------------------------------------------------------- population ---
+def test_the_batch_has_a_real_customer_population(db, batch_run):
+    """It once had a single placeholder customer behind all 35 payments. That
+    reconciles perfectly and looks nothing like a book anyone kept."""
+    rows = fetch(db, "SELECT customer_id, name, email FROM customers WHERE dataset_id=%s",
+                 (batch_run["dataset_id"],))
+    assert len(rows) >= 20, f"only {len(rows)} customers — this is a placeholder, not a population"
+    assert len({r["name"] for r in rows}) == len(rows), "duplicate customer names"
+    assert all("@" in r["email"] for r in rows)
+
+    used = fetch(db, """SELECT count(DISTINCT customer_id) c FROM payments
+                        WHERE dataset_id=%s""", (batch_run["dataset_id"],))[0]["c"]
+    assert used >= 20, f"{used} customers actually transact; the rest are decoration"
+
+
+def test_a_retried_order_keeps_one_customer_across_its_attempts(db, batch_run):
+    """Two failed attempts and a capture are one person trying three times."""
+    bad = fetch(db, """SELECT order_id FROM payments WHERE dataset_id=%s
+                       GROUP BY order_id HAVING count(DISTINCT customer_id) > 1""",
+                (batch_run["dataset_id"],))
+    assert bad == [], f"a retried order changed customer mid-way: {bad}"
+    retried = fetch(db, """SELECT order_id, count(*) n FROM payments WHERE dataset_id=%s
+                           GROUP BY order_id HAVING count(*) > 1""", (batch_run["dataset_id"],))
+    assert retried, "the batch is supposed to contain a retried order"
+
+
+def test_every_commission_tier_in_the_policy_is_represented(db, batch_run):
+    """Commission is per seller type. With only two tiers present, a bug in the
+    third would never show up in this batch."""
+    from engine.policy import load_policy
+    policy = load_policy()
+    rows = fetch(db, "SELECT seller_id, seller_type, commission_bps, status FROM sellers "
+                     "WHERE dataset_id=%s", (batch_run["dataset_id"],))
+    assert {r["seller_type"] for r in rows} == set(policy._commission), (
+        "the batch does not exercise every commission tier the policy defines")
+    for r in rows:
+        assert r["commission_bps"] == policy._commission[r["seller_type"]]
+    assert any(r["status"] == "SUSPENDED" for r in rows), (
+        "a marketplace roster always has a suspended seller; the engine has to cope")
+
+
+def test_seller_money_moves_on_most_settlements(db, batch_run):
+    """Delta-4 previously had two data points, both defects. Correctly-paid
+    allocations across the batch are the controls that make those two mean
+    something."""
+    ds = batch_run["dataset_id"]
+    with_allocs = fetch(db, """SELECT count(DISTINCT si.settlement_id) c
+                               FROM seller_allocations a
+                               JOIN settlement_items si ON si.dataset_id=a.dataset_id
+                                    AND si.payment_id=a.payment_id
+                                    AND si.transaction_type='PAYMENT'
+                               WHERE a.dataset_id=%s""", (ds,))[0]["c"]
+    total = fetch(db, "SELECT count(*) c FROM settlements WHERE dataset_id=%s", (ds,))[0]["c"]
+    assert with_allocs >= total // 2, (
+        f"only {with_allocs} of {total} settlements move seller money")
+    sellers_paid = fetch(db, "SELECT count(DISTINCT seller_id) c FROM seller_allocations "
+                             "WHERE dataset_id=%s", (ds,))[0]["c"]
+    assert sellers_paid >= 4, "allocations are concentrated on too few sellers"
+
+
+def test_allocations_never_exceed_their_payment(db, batch_run):
+    """INV-B4 by construction, and a real risk once allocations are spread by
+    share rather than written one at a time."""
+    bad = fetch(db, """SELECT a.payment_id, SUM(a.gross_allocated_paise) g, p.amount_paise
+                       FROM seller_allocations a
+                       JOIN payments p ON p.dataset_id=a.dataset_id AND p.payment_id=a.payment_id
+                       WHERE a.dataset_id=%s
+                       GROUP BY a.payment_id, p.amount_paise
+                       HAVING SUM(a.gross_allocated_paise) > p.amount_paise""",
+                (batch_run["dataset_id"],))
+    assert bad == [], f"allocations exceed the payment they came from: {bad}"
+
+
+# --------------------------------------------------------------- csv export ---
+def test_the_csv_export_matches_the_batch(db, batch_run):
+    """The CSVs are a derived artifact. If they are committed but stale, an
+    evaluator reads one set of numbers while the engine runs on another."""
+    import csv as _csv
+    from fixtures.export_csv import OUT, export
+
+    export(db, OUT)
+    assert (OUT / "README.md").exists(), "the export needs its own explanation"
+
+    def rows(name):
+        with (OUT / name).open(encoding="utf-8") as fh:
+            return list(_csv.DictReader(fh))
+
+    manifest = rows("scenarios.csv")
+    assert len(manifest) == len(SCENARIOS)
+    assert {r["scenario_id"] for r in manifest} == {s["scenario_id"] for s in SCENARIOS}
+    for r, s in zip(manifest, SCENARIOS):
+        assert r["settlement_id"] == s["settlement"]["settlement_id"]
+        assert r["family"] == s["family"]
+
+    counts = batch_run["row_counts"]
+    for name, key in (("settlements.csv", "settlements"), ("payments.csv", "payments"),
+                      ("settlement_items.csv", "settlement_items"),
+                      ("ledger_entries.csv", "ledger_entries"),
+                      ("bank_transactions.csv", "bank_transactions"),
+                      ("ground_truth_anomalies.csv", "ground_truth_anomalies")):
+        assert len(rows(name)) == counts[key], f"{name} is out of step with the database"
+
+
+def test_the_csv_export_drops_the_constant_dataset_id(db, batch_run):
+    import csv as _csv
+    from fixtures.export_csv import OUT
+    for name in ("settlements.csv", "payments.csv", "ledger_entries.csv"):
+        with (OUT / name).open(encoding="utf-8") as fh:
+            cols = _csv.DictReader(fh).fieldnames or []
+        assert "dataset_id" not in cols, f"{name} still carries the constant dataset_id"
+
+
+def test_money_columns_in_the_csv_are_integers(db, batch_run):
+    """Every *_paise value must survive the round trip as an integer. A decimal
+    point anywhere here means something converted to rupees on the way out."""
+    import csv as _csv
+    from fixtures.export_csv import OUT
+    for name in ("settlements.csv", "payments.csv", "settlement_items.csv",
+                 "ledger_entries.csv", "bank_transactions.csv"):
+        with (OUT / name).open(encoding="utf-8") as fh:
+            for row in _csv.DictReader(fh):
+                for col, val in row.items():
+                    if col.endswith("_paise") and val != "":
+                        int(val)   # raises on "9764.00"
+
+
 def test_the_batch_file_is_valid_json_and_committed():
     assert BATCH.exists(), "fixtures/evaluation_batch.json must ship with the repo"
     json.loads(BATCH.read_text())

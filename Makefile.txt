@@ -55,6 +55,9 @@ agent-schema:             ## add the agent transcript table to a LIVE db (idempo
 reconcile:                ## run the engine over the newest dataset
 	$(PYTHON) -m scripts.reconcile
 
+evaluation-csv:           ## export the evaluation batch to fixtures/csv/
+	$(PYTHON) -m fixtures.export_csv
+
 evaluation-batch:         ## load the fixed, hand-authored evaluation batch
 	$(PYTHON) -m fixtures.loader
 

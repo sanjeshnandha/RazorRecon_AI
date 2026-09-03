@@ -1,0 +1,27 @@
+customer_id,name,email,created_at
+CUST_001,Aarav Sharma,aarav.sharma@example.in,2025-12-08 05:30:00+00:00
+CUST_002,Diya Iyer,diya.iyer@example.in,2025-12-15 05:30:00+00:00
+CUST_003,Vihaan Reddy,vihaan.reddy@example.in,2025-12-22 05:30:00+00:00
+CUST_004,Ananya Nair,ananya.nair@example.in,2025-12-29 05:30:00+00:00
+CUST_005,Arjun Menon,arjun.menon@example.in,2026-01-05 05:30:00+00:00
+CUST_006,Ishita Bose,ishita.bose@example.in,2026-01-12 05:30:00+00:00
+CUST_007,Kabir Singh,kabir.singh@example.in,2026-01-19 05:30:00+00:00
+CUST_008,Meera Pillai,meera.pillai@example.in,2026-01-26 05:30:00+00:00
+CUST_009,Rohan Gupta,rohan.gupta@example.in,2025-12-04 05:30:00+00:00
+CUST_010,Saanvi Rao,saanvi.rao@example.in,2025-12-11 05:30:00+00:00
+CUST_011,Aditya Joshi,aditya.joshi@example.in,2025-12-18 05:30:00+00:00
+CUST_012,Nisha Kulkarni,nisha.kulkarni@example.in,2025-12-25 05:30:00+00:00
+CUST_013,Vikram Desai,vikram.desai@example.in,2026-01-01 05:30:00+00:00
+CUST_014,Priya Chopra,priya.chopra@example.in,2026-01-08 05:30:00+00:00
+CUST_015,Karan Malhotra,karan.malhotra@example.in,2026-01-15 05:30:00+00:00
+CUST_016,Tara Banerjee,tara.banerjee@example.in,2026-01-22 05:30:00+00:00
+CUST_017,Rahul Shetty,rahul.shetty@example.in,2026-01-29 05:30:00+00:00
+CUST_018,Sneha Ghosh,sneha.ghosh@example.in,2025-12-07 05:30:00+00:00
+CUST_019,Manish Verma,manish.verma@example.in,2025-12-14 05:30:00+00:00
+CUST_020,Kavya Patel,kavya.patel@example.in,2025-12-21 05:30:00+00:00
+CUST_021,Devansh Kapoor,devansh.kapoor@example.in,2025-12-28 05:30:00+00:00
+CUST_022,Riya Krishnan,riya.krishnan@example.in,2026-01-04 05:30:00+00:00
+CUST_023,Yash Agarwal,yash.agarwal@example.in,2026-01-11 05:30:00+00:00
+CUST_024,Neha Subramanian,neha.subramanian@example.in,2026-01-18 05:30:00+00:00
+CUST_025,Siddharth Rana,siddharth.rana@example.in,2026-01-25 05:30:00+00:00
+CUST_026,Anika Deshpande,anika.deshpande@example.in,2025-12-03 05:30:00+00:00

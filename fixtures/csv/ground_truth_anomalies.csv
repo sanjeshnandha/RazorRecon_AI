@@ -1,0 +1,20 @@
+anomaly_id,anomaly_type,subject_type,subject_id,settlement_id,expected_delta_kind,expected_exception_type,original_field,original_value_paise,mutated_value_paise,planted_amount_paise,is_resolvable,notes
+GT_0001,D1_FEE_RATE_DRIFT,payment,EV04_P1,EV_04,D1_COMPUTE,FEE_RATE_MISMATCH,,,,5900,True,Fee charged at 250 bps against a policy of 200.
+GT_0002,D1_TAX_AGGREGATE_ROUNDING,settlement,EV_05,EV_05,D1_COMPUTE,TAX_ROUNDING_MISMATCH,,,,2,True,GST taken on the aggregate fee; 2 paise apart from the per-item method the policy mandates.
+GT_0003,D1_REFUND_NOT_DEDUCTED,refund,EV06_R1,EV_06,D1_COMPUTE,REFUND_NOT_DEDUCTED,,,,400000,True,A processed in-period refund that never reached the settlement.
+GT_0004,TRAP_REFUND_OUTSIDE_PERIOD,refund,EV07_R1,EV_07,D1_COMPUTE,NONE,,,,150000,True,"Refund falls in EV_08's period, not this one. Neither settlement may raise an exception."
+GT_0005,D1_HEADER_ROLLUP_MISMATCH,settlement,EV_08,EV_08,D1_COMPUTE,HEADER_ROLLUP_MISMATCH,,,,75000,True,Header gross is 75000 paise below the sum of its items.
+GT_0006,D1_ADJUSTMENT_UNITEMISED,adjustment,EV09_A1,EV_09,D1_COMPUTE,ADJUSTMENT_UNEXPLAINED,,,,90000,True,Chargeback hit the header with no matching settlement item.
+GT_0007,D2_MISSING_CREDIT,settlement,EV_10,EV_10,D2_BANK,MISSING_BANK_CREDIT,,,,1349480,True,The settlement's net never arrived in the bank statement.
+GT_0008,D2_SPLIT_CREDIT,settlement,EV_11,EV_11,D2_BANK,SPLIT_BANK_CREDIT,,,,0,True,"Arrived as two credits, neither carrying a UTR."
+GT_0009,D2_MERGED_CREDIT,settlement,EV_12,EV_12,D2_BANK,MERGED_BANK_CREDIT,,,,0,True,First leg of a bulk credit covering EV_12 and EV_13.
+GT_0010,D2_MERGED_CREDIT,settlement,EV_13,EV_13,D2_BANK,MERGED_BANK_CREDIT,,,,0,True,Second leg of the same bulk credit.
+GT_0011,D2_NARRATION_NO_UTR,settlement,EV_14,EV_14,D2_BANK,NONE,,,,0,True,"No UTR on the bank line and only a suffix in the narration. The credit is inside the tolerance window, so exact amount + date resolves it at tier A and the correct outcome is no exception at all."
+GT_0012,D3_DUPLICATE_LEDGER,payment,EV15_P1,EV_15,D3_LEDGER,DUPLICATE_LEDGER_ENTRY,,,,976400,True,The settlement group was posted twice; clearing no longer nets to zero.
+GT_0013,D3_MISSING_LEDGER,payment,EV16_P1,EV_16,D3_LEDGER,MISSING_LEDGER_ENTRY,,,,850000,True,No settlement posting; clearing still holds the captured amount.
+GT_0014,D3_WRONG_ACCOUNT,payment,EV17_P1,EV_17,D3_LEDGER,MISPOSTED_ACCOUNT,,,,25000,True,25000 paise of gateway fee posted to SALES; group still balances.
+GT_0015,D4_ALLOC_TRANSFER_DIVERGENCE,seller_allocation,ALLOC_D4A,EV_18,D4_PAYOUT,ALLOCATION_TRANSFER_DIVERGENCE,,,,30000,True,30000 paise short against a SETTLED allocation.
+GT_0016,D4_TRANSFER_MISSING,seller_allocation,ALLOC_D4C,EV_19,D4_PAYOUT,TRANSFER_MISSING,,,,765000,True,SETTLED allocation with no transfer record.
+GT_0017,TRAP_SAME_AMOUNT_SAME_DAY,settlement,EV_20,EV_20,D1_COMPUTE,NONE,,,,0,True,Two legitimate identical payments. The engine must NOT raise anything here.
+GT_0018,TRAP_AMBIGUOUS_MATCH,settlement,EV_21,EV_21,D2_BANK,AMBIGUOUS_BANK_MATCH,,,,0,False,"Two identical credits, two identical settlements, no distinguishing evidence. Must not be auto-resolved."
+GT_0019,TRAP_AMBIGUOUS_MATCH,settlement,EV_22,EV_22,D2_BANK,AMBIGUOUS_BANK_MATCH,,,,0,False,The other half of the ambiguity.

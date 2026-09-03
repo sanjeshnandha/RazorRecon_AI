@@ -1,6 +1,208 @@
 {
   "batch_id": "EVALUATION_BATCH_V1",
   "dataset_id": "e0a1f5c2-0000-4000-8000-000000000001",
+  "customers": [
+    {
+      "customer_id": "CUST_001",
+      "name": "Aarav Sharma",
+      "email": "aarav.sharma@example.in",
+      "created_at": "2025-12-08"
+    },
+    {
+      "customer_id": "CUST_002",
+      "name": "Diya Iyer",
+      "email": "diya.iyer@example.in",
+      "created_at": "2025-12-15"
+    },
+    {
+      "customer_id": "CUST_003",
+      "name": "Vihaan Reddy",
+      "email": "vihaan.reddy@example.in",
+      "created_at": "2025-12-22"
+    },
+    {
+      "customer_id": "CUST_004",
+      "name": "Ananya Nair",
+      "email": "ananya.nair@example.in",
+      "created_at": "2025-12-29"
+    },
+    {
+      "customer_id": "CUST_005",
+      "name": "Arjun Menon",
+      "email": "arjun.menon@example.in",
+      "created_at": "2026-01-05"
+    },
+    {
+      "customer_id": "CUST_006",
+      "name": "Ishita Bose",
+      "email": "ishita.bose@example.in",
+      "created_at": "2026-01-12"
+    },
+    {
+      "customer_id": "CUST_007",
+      "name": "Kabir Singh",
+      "email": "kabir.singh@example.in",
+      "created_at": "2026-01-19"
+    },
+    {
+      "customer_id": "CUST_008",
+      "name": "Meera Pillai",
+      "email": "meera.pillai@example.in",
+      "created_at": "2026-01-26"
+    },
+    {
+      "customer_id": "CUST_009",
+      "name": "Rohan Gupta",
+      "email": "rohan.gupta@example.in",
+      "created_at": "2025-12-04"
+    },
+    {
+      "customer_id": "CUST_010",
+      "name": "Saanvi Rao",
+      "email": "saanvi.rao@example.in",
+      "created_at": "2025-12-11"
+    },
+    {
+      "customer_id": "CUST_011",
+      "name": "Aditya Joshi",
+      "email": "aditya.joshi@example.in",
+      "created_at": "2025-12-18"
+    },
+    {
+      "customer_id": "CUST_012",
+      "name": "Nisha Kulkarni",
+      "email": "nisha.kulkarni@example.in",
+      "created_at": "2025-12-25"
+    },
+    {
+      "customer_id": "CUST_013",
+      "name": "Vikram Desai",
+      "email": "vikram.desai@example.in",
+      "created_at": "2026-01-01"
+    },
+    {
+      "customer_id": "CUST_014",
+      "name": "Priya Chopra",
+      "email": "priya.chopra@example.in",
+      "created_at": "2026-01-08"
+    },
+    {
+      "customer_id": "CUST_015",
+      "name": "Karan Malhotra",
+      "email": "karan.malhotra@example.in",
+      "created_at": "2026-01-15"
+    },
+    {
+      "customer_id": "CUST_016",
+      "name": "Tara Banerjee",
+      "email": "tara.banerjee@example.in",
+      "created_at": "2026-01-22"
+    },
+    {
+      "customer_id": "CUST_017",
+      "name": "Rahul Shetty",
+      "email": "rahul.shetty@example.in",
+      "created_at": "2026-01-29"
+    },
+    {
+      "customer_id": "CUST_018",
+      "name": "Sneha Ghosh",
+      "email": "sneha.ghosh@example.in",
+      "created_at": "2025-12-07"
+    },
+    {
+      "customer_id": "CUST_019",
+      "name": "Manish Verma",
+      "email": "manish.verma@example.in",
+      "created_at": "2025-12-14"
+    },
+    {
+      "customer_id": "CUST_020",
+      "name": "Kavya Patel",
+      "email": "kavya.patel@example.in",
+      "created_at": "2025-12-21"
+    },
+    {
+      "customer_id": "CUST_021",
+      "name": "Devansh Kapoor",
+      "email": "devansh.kapoor@example.in",
+      "created_at": "2025-12-28"
+    },
+    {
+      "customer_id": "CUST_022",
+      "name": "Riya Krishnan",
+      "email": "riya.krishnan@example.in",
+      "created_at": "2026-01-04"
+    },
+    {
+      "customer_id": "CUST_023",
+      "name": "Yash Agarwal",
+      "email": "yash.agarwal@example.in",
+      "created_at": "2026-01-11"
+    },
+    {
+      "customer_id": "CUST_024",
+      "name": "Neha Subramanian",
+      "email": "neha.subramanian@example.in",
+      "created_at": "2026-01-18"
+    },
+    {
+      "customer_id": "CUST_025",
+      "name": "Siddharth Rana",
+      "email": "siddharth.rana@example.in",
+      "created_at": "2026-01-25"
+    },
+    {
+      "customer_id": "CUST_026",
+      "name": "Anika Deshpande",
+      "email": "anika.deshpande@example.in",
+      "created_at": "2025-12-03"
+    }
+  ],
+  "sellers": [
+    {
+      "seller_id": "SELL_01",
+      "seller_name": "Kanha Traders",
+      "seller_type": "SMB",
+      "commission_bps": 1200,
+      "status": "ACTIVE"
+    },
+    {
+      "seller_id": "SELL_02",
+      "seller_name": "Nilgiri Organics",
+      "seller_type": "ENTERPRISE",
+      "commission_bps": 800,
+      "status": "ACTIVE"
+    },
+    {
+      "seller_id": "SELL_03",
+      "seller_name": "Marigold Crafts",
+      "seller_type": "INDIVIDUAL",
+      "commission_bps": 1500,
+      "status": "ACTIVE"
+    },
+    {
+      "seller_id": "SELL_04",
+      "seller_name": "Banyan Textiles",
+      "seller_type": "SMB",
+      "commission_bps": 1200,
+      "status": "ACTIVE"
+    },
+    {
+      "seller_id": "SELL_05",
+      "seller_name": "Coral Electronics",
+      "seller_type": "ENTERPRISE",
+      "commission_bps": 800,
+      "status": "ACTIVE"
+    },
+    {
+      "seller_id": "SELL_06",
+      "seller_name": "Peepal Supplies",
+      "seller_type": "INDIVIDUAL",
+      "status": "SUSPENDED",
+      "commission_bps": 1500
+    }
+  ],
   "title": "Static evaluation batch -- hand-authored, fixed, no randomness",
   "policy_version": "1.0.0",
   "config_hash": "8e2326ce0e4335ea",
@@ -23,7 +225,8 @@
       "payments": [
         {
           "payment_id": "EV01_P1",
-          "order_id": "O_EV01_P1",
+          "order_id": "ORD_0001",
+          "customer_id": "CUST_001",
           "amount_paise": 250000,
           "payment_method": "UPI",
           "captured_at": "2026-02-02",
@@ -35,7 +238,8 @@
         },
         {
           "payment_id": "EV01_P2",
-          "order_id": "O_EV01_P2",
+          "order_id": "ORD_0002",
+          "customer_id": "CUST_002",
           "amount_paise": 1000000,
           "payment_method": "CARD",
           "captured_at": "2026-02-03",
@@ -47,7 +251,8 @@
         },
         {
           "payment_id": "EV01_P3",
-          "order_id": "O_EV01_P3",
+          "order_id": "ORD_0003",
+          "customer_id": "CUST_003",
           "amount_paise": 480000,
           "payment_method": "NETBANKING",
           "captured_at": "2026-02-02",
@@ -60,9 +265,102 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0001",
+          "payment_id": "EV01_P2",
+          "seller_id": "SELL_01",
+          "gross_allocated_paise": 600000,
+          "commission_paise": 72000,
+          "net_seller_paise": 528000,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0002",
+          "payment_id": "EV01_P2",
+          "seller_id": "SELL_04",
+          "gross_allocated_paise": 350000,
+          "commission_paise": 42000,
+          "net_seller_paise": 308000,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0003",
+          "payment_id": "EV01_P3",
+          "seller_id": "SELL_02",
+          "gross_allocated_paise": 432000,
+          "commission_paise": 34560,
+          "net_seller_paise": 397440,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0001",
+          "payment_id": "EV01_P2",
+          "seller_id": "SELL_01",
+          "seller_amount_paise": 528000,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0002",
+          "payment_id": "EV01_P2",
+          "seller_id": "SELL_04",
+          "seller_amount_paise": 308000,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0003",
+          "payment_id": "EV01_P3",
+          "seller_id": "SELL_02",
+          "seller_amount_paise": 397440,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -92,7 +390,8 @@
       "payments": [
         {
           "payment_id": "EV02_P1",
-          "order_id": "O_EV02_A",
+          "order_id": "ORD_0004",
+          "customer_id": "CUST_004",
           "amount_paise": 620000,
           "payment_method": "CARD",
           "captured_at": "2026-02-04",
@@ -104,7 +403,8 @@
         },
         {
           "payment_id": "EV02_P2",
-          "order_id": "O_EV02_A",
+          "order_id": "ORD_0004",
+          "customer_id": "CUST_004",
           "amount_paise": 620000,
           "payment_method": "CARD",
           "captured_at": "2026-02-04",
@@ -116,7 +416,8 @@
         },
         {
           "payment_id": "EV02_P3",
-          "order_id": "O_EV02_A",
+          "order_id": "ORD_0004",
+          "customer_id": "CUST_004",
           "amount_paise": 620000,
           "payment_method": "CARD",
           "captured_at": "2026-02-04",
@@ -128,7 +429,8 @@
         },
         {
           "payment_id": "EV02_P4",
-          "order_id": "O_EV02_P4",
+          "order_id": "ORD_0005",
+          "customer_id": "CUST_005",
           "amount_paise": 310000,
           "payment_method": "WALLET",
           "captured_at": "2026-02-05",
@@ -141,9 +443,86 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0004",
+          "payment_id": "EV02_P3",
+          "seller_id": "SELL_03",
+          "gross_allocated_paise": 496000,
+          "commission_paise": 74400,
+          "net_seller_paise": 421600,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0005",
+          "payment_id": "EV02_P4",
+          "seller_id": "SELL_05",
+          "gross_allocated_paise": 232500,
+          "commission_paise": 18600,
+          "net_seller_paise": 213900,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0004",
+          "payment_id": "EV02_P3",
+          "seller_id": "SELL_03",
+          "seller_amount_paise": 421600,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0005",
+          "payment_id": "EV02_P4",
+          "seller_id": "SELL_05",
+          "seller_amount_paise": 213900,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -173,7 +552,8 @@
       "payments": [
         {
           "payment_id": "EV03_P1",
-          "order_id": "O_EV03_P1",
+          "order_id": "ORD_0006",
+          "customer_id": "CUST_006",
           "amount_paise": 900000,
           "payment_method": "CARD",
           "captured_at": "2026-02-06",
@@ -196,9 +576,70 @@
         }
       ],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0006",
+          "payment_id": "EV03_P1",
+          "seller_id": "SELL_02",
+          "gross_allocated_paise": 450000,
+          "commission_paise": 36000,
+          "net_seller_paise": 414000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0006",
+          "payment_id": "EV03_P1",
+          "seller_id": "SELL_02",
+          "seller_amount_paise": 414000,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -228,7 +669,8 @@
       "payments": [
         {
           "payment_id": "EV04_P1",
-          "order_id": "O_EV04_P1",
+          "order_id": "ORD_0007",
+          "customer_id": "CUST_007",
           "amount_paise": 1000000,
           "payment_method": "CARD",
           "captured_at": "2026-02-08",
@@ -241,9 +683,70 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0007",
+          "payment_id": "EV04_P1",
+          "seller_id": "SELL_04",
+          "gross_allocated_paise": 700000,
+          "commission_paise": 84000,
+          "net_seller_paise": 616000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0007",
+          "payment_id": "EV04_P1",
+          "seller_id": "SELL_04",
+          "seller_amount_paise": 616000,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -286,7 +789,8 @@
       "payments": [
         {
           "payment_id": "EV05_P1",
-          "order_id": "O_EV05_P1",
+          "order_id": "ORD_0008",
+          "customer_id": "CUST_008",
           "amount_paise": 120200,
           "payment_method": "CARD",
           "captured_at": "2026-02-10",
@@ -298,7 +802,8 @@
         },
         {
           "payment_id": "EV05_P2",
-          "order_id": "O_EV05_P2",
+          "order_id": "ORD_0009",
+          "customer_id": "CUST_009",
           "amount_paise": 180500,
           "payment_method": "CARD",
           "captured_at": "2026-02-10",
@@ -310,7 +815,8 @@
         },
         {
           "payment_id": "EV05_P3",
-          "order_id": "O_EV05_P3",
+          "order_id": "ORD_0010",
+          "customer_id": "CUST_010",
           "amount_paise": 240700,
           "payment_method": "CARD",
           "captured_at": "2026-02-10",
@@ -322,7 +828,8 @@
         },
         {
           "payment_id": "EV05_P4",
-          "order_id": "O_EV05_P4",
+          "order_id": "ORD_0011",
+          "customer_id": "CUST_011",
           "amount_paise": 300800,
           "payment_method": "CARD",
           "captured_at": "2026-02-10",
@@ -334,7 +841,8 @@
         },
         {
           "payment_id": "EV05_P5",
-          "order_id": "O_EV05_P5",
+          "order_id": "ORD_0012",
+          "customer_id": "CUST_012",
           "amount_paise": 361000,
           "payment_method": "CARD",
           "captured_at": "2026-02-10",
@@ -346,7 +854,8 @@
         },
         {
           "payment_id": "EV05_P6",
-          "order_id": "O_EV05_P6",
+          "order_id": "ORD_0013",
+          "customer_id": "CUST_013",
           "amount_paise": 421100,
           "payment_method": "CARD",
           "captured_at": "2026-02-10",
@@ -359,9 +868,86 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0008",
+          "payment_id": "EV05_P1",
+          "seller_id": "SELL_03",
+          "gross_allocated_paise": 114190,
+          "commission_paise": 17129,
+          "net_seller_paise": 97061,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0009",
+          "payment_id": "EV05_P4",
+          "seller_id": "SELL_01",
+          "gross_allocated_paise": 195520,
+          "commission_paise": 23462,
+          "net_seller_paise": 172058,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0008",
+          "payment_id": "EV05_P1",
+          "seller_id": "SELL_03",
+          "seller_amount_paise": 97061,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0009",
+          "payment_id": "EV05_P4",
+          "seller_id": "SELL_01",
+          "seller_amount_paise": 172058,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -405,7 +991,8 @@
       "payments": [
         {
           "payment_id": "EV06_P1",
-          "order_id": "O_EV06_P1",
+          "order_id": "ORD_0014",
+          "customer_id": "CUST_014",
           "amount_paise": 1200000,
           "payment_method": "CARD",
           "captured_at": "2026-02-12",
@@ -428,9 +1015,86 @@
         }
       ],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0010",
+          "payment_id": "EV06_P1",
+          "seller_id": "SELL_05",
+          "gross_allocated_paise": 480000,
+          "commission_paise": 38400,
+          "net_seller_paise": 441600,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0011",
+          "payment_id": "EV06_P1",
+          "seller_id": "SELL_02",
+          "gross_allocated_paise": 540000,
+          "commission_paise": 43200,
+          "net_seller_paise": 496800,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0010",
+          "payment_id": "EV06_P1",
+          "seller_id": "SELL_05",
+          "seller_amount_paise": 441600,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0011",
+          "payment_id": "EV06_P1",
+          "seller_id": "SELL_02",
+          "seller_amount_paise": 496800,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -473,7 +1137,8 @@
       "payments": [
         {
           "payment_id": "EV07_P1",
-          "order_id": "O_EV07_P1",
+          "order_id": "ORD_0015",
+          "customer_id": "CUST_015",
           "amount_paise": 800000,
           "payment_method": "CARD",
           "captured_at": "2026-02-14",
@@ -539,7 +1204,8 @@
       "payments": [
         {
           "payment_id": "EV08_P1",
-          "order_id": "O_EV08_P1",
+          "order_id": "ORD_0016",
+          "customer_id": "CUST_016",
           "amount_paise": 700000,
           "payment_method": "CARD",
           "captured_at": "2026-02-16",
@@ -551,7 +1217,8 @@
         },
         {
           "payment_id": "EV08_P2",
-          "order_id": "O_EV08_P2",
+          "order_id": "ORD_0017",
+          "customer_id": "CUST_017",
           "amount_paise": 250000,
           "payment_method": "UPI",
           "captured_at": "2026-02-17",
@@ -564,9 +1231,70 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0012",
+          "payment_id": "EV08_P1",
+          "seller_id": "SELL_01",
+          "gross_allocated_paise": 560000,
+          "commission_paise": 67200,
+          "net_seller_paise": 492800,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0012",
+          "payment_id": "EV08_P1",
+          "seller_id": "SELL_01",
+          "seller_amount_paise": 492800,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": {
@@ -612,7 +1340,8 @@
       "payments": [
         {
           "payment_id": "EV09_P1",
-          "order_id": "O_EV09_P1",
+          "order_id": "ORD_0018",
+          "customer_id": "CUST_018",
           "amount_paise": 950000,
           "payment_method": "CARD",
           "captured_at": "2026-02-18",
@@ -681,7 +1410,8 @@
       "payments": [
         {
           "payment_id": "EV10_P1",
-          "order_id": "O_EV10_P1",
+          "order_id": "ORD_0019",
+          "customer_id": "CUST_019",
           "amount_paise": 1400000,
           "payment_method": "CARD",
           "captured_at": "2026-02-20",
@@ -694,9 +1424,86 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0013",
+          "payment_id": "EV10_P1",
+          "seller_id": "SELL_04",
+          "gross_allocated_paise": 980000,
+          "commission_paise": 117600,
+          "net_seller_paise": 862400,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0014",
+          "payment_id": "EV10_P1",
+          "seller_id": "SELL_03",
+          "gross_allocated_paise": 280000,
+          "commission_paise": 42000,
+          "net_seller_paise": 238000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0013",
+          "payment_id": "EV10_P1",
+          "seller_id": "SELL_04",
+          "seller_amount_paise": 862400,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0014",
+          "payment_id": "EV10_P1",
+          "seller_id": "SELL_03",
+          "seller_amount_paise": 238000,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": [],
       "ledger_mutation": null,
       "header_override": null,
@@ -738,7 +1545,8 @@
       "payments": [
         {
           "payment_id": "EV11_P1",
-          "order_id": "O_EV11_P1",
+          "order_id": "ORD_0020",
+          "customer_id": "CUST_020",
           "amount_paise": 900000,
           "payment_method": "CARD",
           "captured_at": "2026-02-22",
@@ -750,7 +1558,8 @@
         },
         {
           "payment_id": "EV11_P2",
-          "order_id": "O_EV11_P2",
+          "order_id": "ORD_0021",
+          "customer_id": "CUST_021",
           "amount_paise": 600000,
           "payment_method": "NETBANKING",
           "captured_at": "2026-02-23",
@@ -763,9 +1572,86 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0015",
+          "payment_id": "EV11_P1",
+          "seller_id": "SELL_02",
+          "gross_allocated_paise": 540000,
+          "commission_paise": 43200,
+          "net_seller_paise": 496800,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0016",
+          "payment_id": "EV11_P2",
+          "seller_id": "SELL_05",
+          "gross_allocated_paise": 510000,
+          "commission_paise": 40800,
+          "net_seller_paise": 469200,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0015",
+          "payment_id": "EV11_P1",
+          "seller_id": "SELL_02",
+          "seller_amount_paise": 496800,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0016",
+          "payment_id": "EV11_P2",
+          "seller_id": "SELL_05",
+          "seller_amount_paise": 469200,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": "SPLIT",
       "ledger_mutation": null,
       "header_override": null,
@@ -807,7 +1693,8 @@
       "payments": [
         {
           "payment_id": "EV12_P1",
-          "order_id": "O_EV12_P1",
+          "order_id": "ORD_0022",
+          "customer_id": "CUST_022",
           "amount_paise": 700000,
           "payment_method": "CARD",
           "captured_at": "2026-02-24",
@@ -864,7 +1751,8 @@
       "payments": [
         {
           "payment_id": "EV13_P1",
-          "order_id": "O_EV13_P1",
+          "order_id": "ORD_0023",
+          "customer_id": "CUST_023",
           "amount_paise": 550000,
           "payment_method": "NETBANKING",
           "captured_at": "2026-02-26",
@@ -921,7 +1809,8 @@
       "payments": [
         {
           "payment_id": "EV14_P1",
-          "order_id": "O_EV14_P1",
+          "order_id": "ORD_0024",
+          "customer_id": "CUST_024",
           "amount_paise": 1100000,
           "payment_method": "CARD",
           "captured_at": "2026-02-28",
@@ -934,9 +1823,70 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0017",
+          "payment_id": "EV14_P1",
+          "seller_id": "SELL_01",
+          "gross_allocated_paise": 605000,
+          "commission_paise": 72600,
+          "net_seller_paise": 532400,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0017",
+          "payment_id": "EV14_P1",
+          "seller_id": "SELL_01",
+          "seller_amount_paise": 532400,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": "SUFFIX",
       "ledger_mutation": null,
       "header_override": null,
@@ -976,7 +1926,8 @@
       "payments": [
         {
           "payment_id": "EV15_P1",
-          "order_id": "O_EV15_P1",
+          "order_id": "ORD_0025",
+          "customer_id": "CUST_025",
           "amount_paise": 1000000,
           "payment_method": "CARD",
           "captured_at": "2026-03-02",
@@ -989,9 +1940,70 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0018",
+          "payment_id": "EV15_P1",
+          "seller_id": "SELL_03",
+          "gross_allocated_paise": 700000,
+          "commission_paise": 105000,
+          "net_seller_paise": 595000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0018",
+          "payment_id": "EV15_P1",
+          "seller_id": "SELL_03",
+          "seller_amount_paise": 595000,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": {
         "kind": "DUPLICATE_SETTLEMENT_GROUP",
@@ -1036,7 +2048,8 @@
       "payments": [
         {
           "payment_id": "EV16_P1",
-          "order_id": "O_EV16_P1",
+          "order_id": "ORD_0026",
+          "customer_id": "CUST_026",
           "amount_paise": 850000,
           "payment_method": "CARD",
           "captured_at": "2026-03-04",
@@ -1096,7 +2109,8 @@
       "payments": [
         {
           "payment_id": "EV17_P1",
-          "order_id": "O_EV17_P1",
+          "order_id": "ORD_0027",
+          "customer_id": "CUST_001",
           "amount_paise": 1250000,
           "payment_method": "CARD",
           "captured_at": "2026-03-06",
@@ -1109,9 +2123,70 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0019",
+          "payment_id": "EV17_P1",
+          "seller_id": "SELL_04",
+          "gross_allocated_paise": 750000,
+          "commission_paise": 90000,
+          "net_seller_paise": 660000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0019",
+          "payment_id": "EV17_P1",
+          "seller_id": "SELL_04",
+          "seller_amount_paise": 660000,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": {
         "kind": "MISPOST_FEE_TO_SALES",
@@ -1144,7 +2219,7 @@
       "scenario_id": "EV18",
       "title": "Seller paid less than the allocation says they were owed",
       "family": "D4",
-      "note": "EV_S1 was allocated 800000 gross at 1200 bps commission, so 704000 was owed. Only 674000 was transferred. The settlement itself reconciles perfectly on D1, D2 and D3 -- a marketplace can balance to the paise at the top and still be short-paying a seller underneath, which is the entire argument for reporting D4 separately.",
+      "note": "SELL_01 (Kanha Traders, SMB) was allocated 800000 gross at 1200 bps, so 704000 was owed. Only 674000 was transferred. The settlement itself reconciles perfectly on D1, D2 and D3 -- a marketplace can balance to the paise at the top and still be short-paying a seller underneath, which is the entire argument for reporting D4 separately.",
       "settlement": {
         "settlement_id": "EV_18",
         "settlement_period_start": "2026-03-06",
@@ -1156,7 +2231,8 @@
       "payments": [
         {
           "payment_id": "EV18_P1",
-          "order_id": "O_EV18_P1",
+          "order_id": "ORD_0028",
+          "customer_id": "CUST_002",
           "amount_paise": 1200000,
           "payment_method": "CARD",
           "captured_at": "2026-03-08",
@@ -1171,32 +2247,62 @@
       "adjustments": [],
       "sellers": [
         {
-          "seller_id": "EV_S1",
+          "seller_id": "SELL_01",
           "seller_name": "Kanha Traders",
           "seller_type": "SMB",
-          "commission_bps": 1200
+          "commission_bps": 1200,
+          "status": "ACTIVE"
         },
         {
-          "seller_id": "EV_S2",
+          "seller_id": "SELL_02",
           "seller_name": "Nilgiri Organics",
           "seller_type": "ENTERPRISE",
-          "commission_bps": 800
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
         }
       ],
       "allocations": [
         {
-          "allocation_id": "EV18_A1",
+          "allocation_id": "ALLOC_D4A",
           "payment_id": "EV18_P1",
-          "seller_id": "EV_S1",
+          "seller_id": "SELL_01",
           "gross_allocated_paise": 800000,
           "commission_paise": 96000,
           "net_seller_paise": 704000,
           "allocation_status": "SETTLED"
         },
         {
-          "allocation_id": "EV18_A2",
+          "allocation_id": "ALLOC_D4B",
           "payment_id": "EV18_P1",
-          "seller_id": "EV_S2",
+          "seller_id": "SELL_05",
           "gross_allocated_paise": 400000,
           "commission_paise": 32000,
           "net_seller_paise": 368000,
@@ -1207,21 +2313,21 @@
         {
           "transfer_id": "EV18_T1",
           "payment_id": "EV18_P1",
-          "seller_id": "EV_S1",
+          "seller_id": "SELL_01",
           "seller_amount_paise": 674000,
           "transfer_status": "PROCESSED"
         },
         {
           "transfer_id": "EV18_T2",
           "payment_id": "EV18_P1",
-          "seller_id": "EV_S2",
+          "seller_id": "SELL_05",
           "seller_amount_paise": 368000,
           "transfer_status": "PROCESSED"
         },
         {
           "transfer_id": "EV18_T3",
           "payment_id": "EV18_P1",
-          "seller_id": "EV_S1",
+          "seller_id": "SELL_01",
           "seller_amount_paise": 30000,
           "transfer_status": "REVERSED"
         }
@@ -1233,7 +2339,7 @@
         {
           "anomaly_type": "D4_ALLOC_TRANSFER_DIVERGENCE",
           "subject_type": "seller_allocation",
-          "subject_id": "EV18_A1",
+          "subject_id": "ALLOC_D4A",
           "expected_delta_kind": "D4_PAYOUT",
           "expected_exception_type": "ALLOCATION_TRANSFER_DIVERGENCE",
           "planted_amount_paise": 30000,
@@ -1256,7 +2362,7 @@
       "scenario_id": "EV19",
       "title": "Allocation marked settled with no transfer at all",
       "family": "D4",
-      "note": "The allocation says SETTLED and 828000 is owed, but no transfer row exists. Not a rounding difference and not a timing difference -- the payout never happened.",
+      "note": "The allocation says SETTLED and 765000 is owed, but no transfer row exists. Not a rounding difference and not a timing difference -- the payout never happened.",
       "settlement": {
         "settlement_id": "EV_19",
         "settlement_period_start": "2026-03-08",
@@ -1268,7 +2374,8 @@
       "payments": [
         {
           "payment_id": "EV19_P1",
-          "order_id": "O_EV19_P1",
+          "order_id": "ORD_0029",
+          "customer_id": "CUST_003",
           "amount_paise": 950000,
           "payment_method": "CARD",
           "captured_at": "2026-03-10",
@@ -1283,26 +2390,56 @@
       "adjustments": [],
       "sellers": [
         {
-          "seller_id": "EV_S1",
+          "seller_id": "SELL_01",
           "seller_name": "Kanha Traders",
           "seller_type": "SMB",
-          "commission_bps": 1200
+          "commission_bps": 1200,
+          "status": "ACTIVE"
         },
         {
-          "seller_id": "EV_S2",
+          "seller_id": "SELL_02",
           "seller_name": "Nilgiri Organics",
           "seller_type": "ENTERPRISE",
-          "commission_bps": 800
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
         }
       ],
       "allocations": [
         {
-          "allocation_id": "EV19_A1",
+          "allocation_id": "ALLOC_D4C",
           "payment_id": "EV19_P1",
-          "seller_id": "EV_S2",
+          "seller_id": "SELL_03",
           "gross_allocated_paise": 900000,
-          "commission_paise": 72000,
-          "net_seller_paise": 828000,
+          "commission_paise": 135000,
+          "net_seller_paise": 765000,
           "allocation_status": "SETTLED"
         }
       ],
@@ -1314,10 +2451,10 @@
         {
           "anomaly_type": "D4_TRANSFER_MISSING",
           "subject_type": "seller_allocation",
-          "subject_id": "EV19_A1",
+          "subject_id": "ALLOC_D4C",
           "expected_delta_kind": "D4_PAYOUT",
           "expected_exception_type": "TRANSFER_MISSING",
-          "planted_amount_paise": 828000,
+          "planted_amount_paise": 765000,
           "is_resolvable": true,
           "notes": "SETTLED allocation with no transfer record."
         }
@@ -1326,7 +2463,7 @@
         "d1_paise": 0,
         "d2_paise": 0,
         "d3_paise": 0,
-        "d4_paise": 828000,
+        "d4_paise": 765000,
         "worst_tier": "A",
         "exception_types": [
           "TRANSFER_MISSING"
@@ -1349,7 +2486,8 @@
       "payments": [
         {
           "payment_id": "EV20_P1",
-          "order_id": "O_EV20_A",
+          "order_id": "ORD_0030",
+          "customer_id": "CUST_004",
           "amount_paise": 450000,
           "payment_method": "CARD",
           "captured_at": "2026-03-12",
@@ -1361,7 +2499,8 @@
         },
         {
           "payment_id": "EV20_P2",
-          "order_id": "O_EV20_B",
+          "order_id": "ORD_0031",
+          "customer_id": "CUST_005",
           "amount_paise": 450000,
           "payment_method": "CARD",
           "captured_at": "2026-03-12",
@@ -1374,9 +2513,86 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0020",
+          "payment_id": "EV20_P1",
+          "seller_id": "SELL_02",
+          "gross_allocated_paise": 315000,
+          "commission_paise": 25200,
+          "net_seller_paise": 289800,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "ALLOC_0021",
+          "payment_id": "EV20_P2",
+          "seller_id": "SELL_05",
+          "gross_allocated_paise": 315000,
+          "commission_paise": 25200,
+          "net_seller_paise": 289800,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0020",
+          "payment_id": "EV20_P1",
+          "seller_id": "SELL_02",
+          "seller_amount_paise": 289800,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "TRF_0021",
+          "payment_id": "EV20_P2",
+          "seller_id": "SELL_05",
+          "seller_amount_paise": 289800,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": null,
       "ledger_mutation": null,
       "header_override": null,
@@ -1417,7 +2633,8 @@
       "payments": [
         {
           "payment_id": "EV21_P1",
-          "order_id": "O_EV21_P1",
+          "order_id": "ORD_0032",
+          "customer_id": "CUST_006",
           "amount_paise": 500000,
           "payment_method": "CARD",
           "captured_at": "2026-03-14",
@@ -1430,9 +2647,70 @@
       ],
       "refunds": [],
       "adjustments": [],
-      "sellers": [],
-      "allocations": [],
-      "transfers": [],
+      "sellers": [
+        {
+          "seller_id": "SELL_01",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_02",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_03",
+          "seller_name": "Marigold Crafts",
+          "seller_type": "INDIVIDUAL",
+          "commission_bps": 1500,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_04",
+          "seller_name": "Banyan Textiles",
+          "seller_type": "SMB",
+          "commission_bps": 1200,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_05",
+          "seller_name": "Coral Electronics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800,
+          "status": "ACTIVE"
+        },
+        {
+          "seller_id": "SELL_06",
+          "seller_name": "Peepal Supplies",
+          "seller_type": "INDIVIDUAL",
+          "status": "SUSPENDED",
+          "commission_bps": 1500
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "ALLOC_0022",
+          "payment_id": "EV21_P1",
+          "seller_id": "SELL_01",
+          "gross_allocated_paise": 450000,
+          "commission_paise": 54000,
+          "net_seller_paise": 396000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "TRF_0022",
+          "payment_id": "EV21_P1",
+          "seller_id": "SELL_01",
+          "seller_amount_paise": 396000,
+          "transfer_status": "PROCESSED"
+        }
+      ],
       "bank": "AMBIGUOUS_HEAD",
       "ledger_mutation": null,
       "header_override": null,
@@ -1474,7 +2752,8 @@
       "payments": [
         {
           "payment_id": "EV22_P1",
-          "order_id": "O_EV22_P1",
+          "order_id": "ORD_0033",
+          "customer_id": "CUST_007",
           "amount_paise": 500000,
           "payment_method": "CARD",
           "captured_at": "2026-03-16",

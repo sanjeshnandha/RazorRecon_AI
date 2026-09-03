@@ -1,0 +1,7 @@
+seller_id,seller_name,seller_type,commission_bps,status
+SELL_01,Kanha Traders,SMB,1200,ACTIVE
+SELL_02,Nilgiri Organics,ENTERPRISE,800,ACTIVE
+SELL_03,Marigold Crafts,INDIVIDUAL,1500,ACTIVE
+SELL_04,Banyan Textiles,SMB,1200,ACTIVE
+SELL_05,Coral Electronics,ENTERPRISE,800,ACTIVE
+SELL_06,Peepal Supplies,INDIVIDUAL,1500,SUSPENDED

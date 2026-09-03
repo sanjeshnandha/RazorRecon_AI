@@ -22,7 +22,6 @@ from engine.policy import load_policy
 
 BATCH = pathlib.Path(__file__).resolve().parent / "evaluation_batch.json"
 IST = timezone(timedelta(hours=5, minutes=30))
-CUSTOMER = "EV_C1"
 
 
 def _d(x) -> date:
@@ -61,8 +60,11 @@ def load(conn, batch: dict | None = None) -> dict:
         cur.execute("DELETE FROM datasets WHERE dataset_id=%s", (ds,))
     conn.commit()
 
-    customers = [(ds, CUSTOMER, "Evaluation Customer", "evaluation@example.in",
-                  _ts("2026-01-05"))]
+    # The population comes from the batch file, like everything else. It used to
+    # be one hardcoded customer here -- fine for proving arithmetic, but it made
+    # 35 payments look like they came from the same person.
+    customers = [(ds, c["customer_id"], c["name"], c["email"], _ts(c["created_at"]))
+                 for c in batch.get("customers", [])]
     sellers, orders, payments, refunds, allocs, xfers, adjs = [], [], [], [], [], [], []
     settlements, items, bank, ledger, edges, truth = [], [], [], [], [], []
     seen_sellers: set[str] = set()
@@ -86,15 +88,16 @@ def load(conn, batch: dict | None = None) -> dict:
                 continue
             seen_sellers.add(x["seller_id"])
             sellers.append((ds, x["seller_id"], x["seller_name"], x["seller_type"],
-                            x["commission_bps"], "ACTIVE"))
+                            x["commission_bps"], x.get("status", "ACTIVE")))
 
         for p in sc["payments"]:
             if p["order_id"] not in seen_orders:
                 seen_orders.add(p["order_id"])
-                orders.append((ds, p["order_id"], CUSTOMER, p["amount_paise"],
+                orders.append((ds, p["order_id"], p["customer_id"], p["amount_paise"],
                                _d(p["captured_at"]), "PAID"))
             cap = p["payment_status"] == "CAPTURED"
-            payments.append((ds, p["payment_id"], p["order_id"], CUSTOMER, p["amount_paise"],
+            payments.append((ds, p["payment_id"], p["order_id"], p["customer_id"],
+                             p["amount_paise"],
                              p["payment_status"], p["payment_method"], _ts(p["captured_at"]),
                              _ts(p["captured_at"]) if cap else None,
                              None if cap else "Bank declined"))
@@ -224,6 +227,14 @@ def load(conn, batch: dict | None = None) -> dict:
                           g["subject_id"], sid, g["expected_delta_kind"],
                           g["expected_exception_type"], None, None, None,
                           g["planted_amount_paise"], g["is_resolvable"], g["notes"]))
+
+    # Every seller in the population gets a row, including any that took no money
+    # in this batch -- a marketplace roster is not only its active sellers.
+    for x in batch.get("sellers", []):
+        if x["seller_id"] not in seen_sellers:
+            seen_sellers.add(x["seller_id"])
+            sellers.append((ds, x["seller_id"], x["seller_name"], x["seller_type"],
+                            x["commission_bps"], x.get("status", "ACTIVE")))
 
     # ---- pass 2: the bank statement, which needs every net to be known -------
     by_id = {sc["settlement"]["settlement_id"]: sc for sc in scenarios}

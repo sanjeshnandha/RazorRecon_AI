@@ -46,11 +46,20 @@ def utr(n: int, d: str) -> str:
     return f"N{d.replace('-', '')[2:]}{n:08d}"
 
 
+_order_customer: dict[str, str] = {}
+
+
 def pay(pid, amount, method, day, *, charged_fee=None, charged_tax=None,
         status="CAPTURED", order=None):
+    """One payment. `order` groups retry attempts: they share an order and,
+    because a person does not change between attempts, a customer."""
     f = fee(amount, method)
-    return {"payment_id": pid, "order_id": order or f"O_{pid}", "amount_paise": amount,
-            "payment_method": method, "captured_at": day, "payment_status": status,
+    oid = order_for(order or pid)
+    if oid not in _order_customer:
+        _order_customer[oid] = next_customer()
+    return {"payment_id": pid, "order_id": oid, "customer_id": _order_customer[oid],
+            "amount_paise": amount, "payment_method": method, "captured_at": day,
+            "payment_status": status,
             "policy_fee_paise": f, "policy_tax_paise": tax(f),
             "charged_fee_paise": f if charged_fee is None else charged_fee,
             "charged_tax_paise": tax(f) if charged_tax is None else charged_tax}
@@ -78,8 +87,79 @@ def gt(anomaly_type, subject_type, subject_id, delta_kind, exception_type,
             "is_resolvable": resolvable, "notes": notes}
 
 
+# =============================================================================
+# The population.
+#
+# A batch with one customer and two sellers reconciles just as well, but it does
+# not look like a book anyone kept -- and an evaluator reading it should be
+# looking at the anomalies, not wondering why 35 payments came from the same
+# person. Names are ordinary Indian retail names; the emails are example.in, so
+# nothing here can be mistaken for a real address.
+# =============================================================================
+CUSTOMERS = [
+    ("Aarav Sharma", "aarav.sharma"), ("Diya Iyer", "diya.iyer"),
+    ("Vihaan Reddy", "vihaan.reddy"), ("Ananya Nair", "ananya.nair"),
+    ("Arjun Menon", "arjun.menon"), ("Ishita Bose", "ishita.bose"),
+    ("Kabir Singh", "kabir.singh"), ("Meera Pillai", "meera.pillai"),
+    ("Rohan Gupta", "rohan.gupta"), ("Saanvi Rao", "saanvi.rao"),
+    ("Aditya Joshi", "aditya.joshi"), ("Nisha Kulkarni", "nisha.kulkarni"),
+    ("Vikram Desai", "vikram.desai"), ("Priya Chopra", "priya.chopra"),
+    ("Karan Malhotra", "karan.malhotra"), ("Tara Banerjee", "tara.banerjee"),
+    ("Rahul Shetty", "rahul.shetty"), ("Sneha Ghosh", "sneha.ghosh"),
+    ("Manish Verma", "manish.verma"), ("Kavya Patel", "kavya.patel"),
+    ("Devansh Kapoor", "devansh.kapoor"), ("Riya Krishnan", "riya.krishnan"),
+    ("Yash Agarwal", "yash.agarwal"), ("Neha Subramanian", "neha.subramanian"),
+    ("Siddharth Rana", "siddharth.rana"), ("Anika Deshpande", "anika.deshpande"),
+]
+CUSTOMER_ROWS = [
+    {"customer_id": f"CUST_{i:03d}", "name": name, "email": f"{handle}@example.in",
+     # signup dates spread across the two months before the batch opens
+     "created_at": (date(2025, 12, 1) + timedelta(days=(i * 7) % 60)).isoformat()}
+    for i, (name, handle) in enumerate(CUSTOMERS, start=1)
+]
+
+# Six sellers spanning all three commission tiers the policy defines, and one
+# SUSPENDED -- a marketplace always has a few.
+SELLER_ROWS = [
+    {"seller_id": "SELL_01", "seller_name": "Kanha Traders", "seller_type": "SMB"},
+    {"seller_id": "SELL_02", "seller_name": "Nilgiri Organics", "seller_type": "ENTERPRISE"},
+    {"seller_id": "SELL_03", "seller_name": "Marigold Crafts", "seller_type": "INDIVIDUAL"},
+    {"seller_id": "SELL_04", "seller_name": "Banyan Textiles", "seller_type": "SMB"},
+    {"seller_id": "SELL_05", "seller_name": "Coral Electronics", "seller_type": "ENTERPRISE"},
+    {"seller_id": "SELL_06", "seller_name": "Peepal Supplies", "seller_type": "INDIVIDUAL",
+     "status": "SUSPENDED"},
+]
+for _s in SELLER_ROWS:
+    _s["commission_bps"] = P._commission[_s["seller_type"]]
+    _s.setdefault("status", "ACTIVE")
+
+ACTIVE_SELLERS = [s for s in SELLER_ROWS if s["status"] == "ACTIVE"]
+
+
+def commission_for(seller_id: str) -> int:
+    return next(s["commission_bps"] for s in SELLER_ROWS if s["seller_id"] == seller_id)
+
+
 SCENARIOS: list[dict] = []
 _cursor = {"day": START, "n": 0}
+_seq = {"customer": 0, "order": 0, "alloc": 0, "transfer": 0}
+_orders: dict[str, str] = {}
+
+
+def next_customer() -> str:
+    """Walk the population in order. Deterministic, and every customer is used
+    before any is reused."""
+    _seq["customer"] += 1
+    return CUSTOMER_ROWS[(_seq["customer"] - 1) % len(CUSTOMER_ROWS)]["customer_id"]
+
+
+def order_for(key: str) -> str:
+    """Orders have their own identity. Two attempts at the same order share a
+    key, and therefore share an order_id and a customer."""
+    if key not in _orders:
+        _seq["order"] += 1
+        _orders[key] = f"ORD_{_seq['order']:04d}"
+    return _orders[key]
 
 
 def scenario(sid, title, family, note, *, span=2, **kw):
@@ -380,58 +460,82 @@ scenario("EV17", "Gateway fee posted to SALES instead of GATEWAY_FEES", "D3",
 # =============================================================================
 # DELTA 4 -- what each seller was owed against what actually moved
 # =============================================================================
-_SELLERS = [{"seller_id": "EV_S1", "seller_name": "Kanha Traders",
-             "seller_type": "SMB", "commission_bps": P._commission["SMB"]},
-            {"seller_id": "EV_S2", "seller_name": "Nilgiri Organics",
-             "seller_type": "ENTERPRISE", "commission_bps": P._commission["ENTERPRISE"]}]
-
-
-def alloc(aid, pid, seller_id, gross):
-    c = bps(gross, P._commission[next(s["seller_type"] for s in _SELLERS
-                                      if s["seller_id"] == seller_id)])
+def alloc(aid, pid, seller_id, gross, *, status="SETTLED"):
+    """One allocation. Commission comes from the seller's tier in policy.yaml,
+    so INV-B4 (net = gross - commission) holds by construction."""
+    c = bps(gross, commission_for(seller_id))
     return {"allocation_id": aid, "payment_id": pid, "seller_id": seller_id,
             "gross_allocated_paise": gross, "commission_paise": c,
-            "net_seller_paise": gross - c, "allocation_status": "SETTLED"}
+            "net_seller_paise": gross - c, "allocation_status": status}
 
 
-_a1 = alloc("EV18_A1", "EV18_P1", "EV_S1", 800000)
-_a2 = alloc("EV18_A2", "EV18_P1", "EV_S2", 400000)
+def paid_out(scenario, splits):
+    """Allocate a settlement's payments to sellers and pay every one of them
+    exactly what is owed.
+
+    Most settlements in a marketplace move seller money, and almost all of it
+    moves correctly. Without these the batch would contain seller payouts only
+    where something is wrong with them, which is not a book -- and Delta-4 would
+    have two data points and no controls.
+
+    `splits` is [(payment_id, seller_id, share_bps), ...].
+    """
+    by_id = {p["payment_id"]: p for p in scenario["payments"]}
+    for pid, seller_id, share_bps in splits:
+        p = by_id[pid]
+        if p["payment_status"] != "CAPTURED":
+            continue
+        gross = bps(p["amount_paise"], share_bps)
+        _seq["alloc"] += 1
+        a = alloc(f"ALLOC_{_seq['alloc']:04d}", pid, seller_id, gross)
+        scenario["allocations"].append(a)
+        _seq["transfer"] += 1
+        scenario["transfers"].append({
+            "transfer_id": f"TRF_{_seq['transfer']:04d}", "payment_id": pid,
+            "seller_id": seller_id, "seller_amount_paise": a["net_seller_paise"],
+            "transfer_status": "PROCESSED"})
+    scenario["sellers"] = SELLER_ROWS
+    return scenario
+
+
+_a1 = alloc("ALLOC_D4A", "EV18_P1", "SELL_01", 800000)
+_a2 = alloc("ALLOC_D4B", "EV18_P1", "SELL_05", 400000)
 _SHORT = 30000
 scenario("EV18", "Seller paid less than the allocation says they were owed", "D4",
-         f"EV_S1 was allocated 800000 gross at 1200 bps commission, so "
+         f"SELL_01 (Kanha Traders, SMB) was allocated 800000 gross at 1200 bps, so "
          f"{_a1['net_seller_paise']} was owed. Only "
          f"{_a1['net_seller_paise'] - _SHORT} was transferred. The settlement "
          f"itself reconciles perfectly on D1, D2 and D3 -- a marketplace can "
          f"balance to the paise at the top and still be short-paying a seller "
          f"underneath, which is the entire argument for reporting D4 separately.",
          payments=[pay("EV18_P1", 1200000, "CARD", "2026-03-08")],
-         sellers=_SELLERS, allocations=[_a1, _a2],
+         sellers=SELLER_ROWS, allocations=[_a1, _a2],
          transfers=[{"transfer_id": "EV18_T1", "payment_id": "EV18_P1",
-                     "seller_id": "EV_S1", "seller_amount_paise":
+                     "seller_id": "SELL_01", "seller_amount_paise":
                          _a1["net_seller_paise"] - _SHORT, "transfer_status": "PROCESSED"},
                     {"transfer_id": "EV18_T2", "payment_id": "EV18_P1",
-                     "seller_id": "EV_S2", "seller_amount_paise": _a2["net_seller_paise"],
+                     "seller_id": "SELL_05", "seller_amount_paise": _a2["net_seller_paise"],
                      "transfer_status": "PROCESSED"},
                     # the reversal that accounts for the shortfall: explainable,
                     # not a mystery. Without this row the engine is right to
                     # refuse to resolve it.
                     {"transfer_id": "EV18_T3", "payment_id": "EV18_P1",
-                     "seller_id": "EV_S1", "seller_amount_paise": _SHORT,
+                     "seller_id": "SELL_01", "seller_amount_paise": _SHORT,
                      "transfer_status": "REVERSED"}],
-         ground_truth=[gt("D4_ALLOC_TRANSFER_DIVERGENCE", "seller_allocation", "EV18_A1",
+         ground_truth=[gt("D4_ALLOC_TRANSFER_DIVERGENCE", "seller_allocation", "ALLOC_D4A",
                           "D4_PAYOUT", "ALLOCATION_TRANSFER_DIVERGENCE", _SHORT, True,
                           f"{_SHORT} paise short against a SETTLED allocation.")],
          expected={"d1_paise": 0, "d2_paise": 0, "d3_paise": 0, "d4_paise": _SHORT,
                    "worst_tier": "A", "exception_types": ["ALLOCATION_TRANSFER_DIVERGENCE"]})
 
-_a3 = alloc("EV19_A1", "EV19_P1", "EV_S2", 900000)
+_a3 = alloc("ALLOC_D4C", "EV19_P1", "SELL_03", 900000)
 scenario("EV19", "Allocation marked settled with no transfer at all", "D4",
          f"The allocation says SETTLED and {_a3['net_seller_paise']} is owed, but "
          f"no transfer row exists. Not a rounding difference and not a timing "
          f"difference -- the payout never happened.",
          payments=[pay("EV19_P1", 950000, "CARD", "2026-03-10")],
-         sellers=_SELLERS, allocations=[_a3], transfers=[],
-         ground_truth=[gt("D4_TRANSFER_MISSING", "seller_allocation", "EV19_A1",
+         sellers=SELLER_ROWS, allocations=[_a3], transfers=[],
+         ground_truth=[gt("D4_TRANSFER_MISSING", "seller_allocation", "ALLOC_D4C",
                           "D4_PAYOUT", "TRANSFER_MISSING", _a3["net_seller_paise"], True,
                           "SETTLED allocation with no transfer record.")],
          expected={"d1_paise": 0, "d2_paise": 0, "d3_paise": 0,
@@ -487,10 +591,42 @@ scenario("EV22", "Ambiguous bank match, second of the identical pair", "TRAP",
                    "worst_tier": "C", "exception_types": ["AMBIGUOUS_BANK_MATCH"]})
 
 
+# =============================================================================
+# Marketplace payouts across the rest of the batch.
+#
+# Applied AFTER the scenarios are defined, so each one still reads as a single
+# statement about the one thing it is testing. Every payout here is correct, so
+# Delta-4 stays zero on all of them -- they are the controls that make EV18 and
+# EV19 mean something.
+# =============================================================================
+_BY_ID = {sc["scenario_id"]: sc for sc in SCENARIOS}
+
+for _sid, _splits in {
+    "EV01": [("EV01_P2", "SELL_01", 6000), ("EV01_P2", "SELL_04", 3500),
+             ("EV01_P3", "SELL_02", 9000)],
+    "EV02": [("EV02_P3", "SELL_03", 8000), ("EV02_P4", "SELL_05", 7500)],
+    "EV03": [("EV03_P1", "SELL_02", 5000)],
+    "EV04": [("EV04_P1", "SELL_04", 7000)],
+    "EV05": [("EV05_P1", "SELL_03", 9500), ("EV05_P4", "SELL_01", 6500)],
+    "EV06": [("EV06_P1", "SELL_05", 4000), ("EV06_P1", "SELL_02", 4500)],
+    "EV08": [("EV08_P1", "SELL_01", 8000)],
+    "EV10": [("EV10_P1", "SELL_04", 7000), ("EV10_P1", "SELL_03", 2000)],
+    "EV11": [("EV11_P1", "SELL_02", 6000), ("EV11_P2", "SELL_05", 8500)],
+    "EV14": [("EV14_P1", "SELL_01", 5500)],
+    "EV15": [("EV15_P1", "SELL_03", 7000)],
+    "EV17": [("EV17_P1", "SELL_04", 6000)],
+    "EV20": [("EV20_P1", "SELL_02", 7000), ("EV20_P2", "SELL_05", 7000)],
+    "EV21": [("EV21_P1", "SELL_01", 9000)],
+}.items():
+    paid_out(_BY_ID[_sid], _splits)
+
+
 def main() -> None:
     doc = {
         "batch_id": "EVALUATION_BATCH_V1",
         "dataset_id": DATASET_ID,
+        "customers": CUSTOMER_ROWS,
+        "sellers": SELLER_ROWS,
         "title": "Static evaluation batch -- hand-authored, fixed, no randomness",
         "policy_version": P.version,
         "config_hash": P.config_hash,
@@ -507,7 +643,12 @@ def main() -> None:
     fams: dict[str, int] = {}
     for s in SCENARIOS:
         fams[s["family"]] = fams.get(s["family"], 0) + 1
+    allocs = sum(len(s["allocations"]) for s in SCENARIOS)
+    used = {p["customer_id"] for s in SCENARIOS for p in s["payments"]}
     print(f"wrote {OUT} -- {len(SCENARIOS)} scenarios {fams}")
+    print(f"  {len(used)} customers used of {len(CUSTOMER_ROWS)} · "
+          f"{len(SELLER_ROWS)} sellers · {allocs} allocations across "
+          f"{sum(1 for s in SCENARIOS if s['allocations'])} settlements")
 
 
 if __name__ == "__main__":

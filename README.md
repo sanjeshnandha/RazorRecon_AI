@@ -552,7 +552,7 @@ because a single append can pass on a counter that never advanced.
 `make evaluation-batch`, or the **Evaluation batch** button in the header.
 
 The seeded generator is reproducible but large. This is the other thing: a
-**fixed, hand-authored batch of 22 settlements and 301 financial records**, small
+**fixed, hand-authored batch of 22 settlements and 345 financial records**, small
 enough to read end to end, with every expected outcome written down in
 `fixtures/evaluation_batch.json` beside the data that produces it. No seed, no
 sampling, no clock — the same rows every time, under a constant `dataset_id`, so
@@ -579,6 +579,10 @@ correct escalation, 3/3 traps avoided and zero false auto-resolutions** — and
 `tests/test_evaluation_batch.py` asserts every one of those numbers, plus each
 scenario's stated delta, tier and exception type, one test per scenario. The file
 cannot quietly drift into describing something the engine no longer does.
+
+`make evaluation-csv` writes the whole batch to `fixtures/csv/` as 15 flat files
+— 992 rows, one per table, with `scenarios.csv` as the manifest. Useful for
+reading it in Excel or checking the arithmetic outside the system entirely.
 
 The batch is authored by `fixtures/authoring.py`, which contains no randomness
 and derives every fee and tax from `policy.yaml` through the same `bps()` the
