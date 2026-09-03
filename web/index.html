@@ -29,6 +29,61 @@ button{font:inherit}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 
+/* ---------- data browser ---------- */
+.db-wrap{display:grid;grid-template-columns:240px 1fr;gap:18px;align-items:start}
+.db-list{border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  max-height:76vh;overflow-y:auto}
+.db-group{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);
+  padding:10px 12px 6px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.db-item{display:flex;justify-content:space-between;gap:8px;align-items:baseline;
+  padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--line-2);font-size:13px}
+.db-item:hover{background:var(--em-50)}
+.db-item.on{background:var(--em-50);color:var(--em-900);font-weight:600;
+  box-shadow:inset 3px 0 0 var(--em-500)}
+.db-item .n{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.db-item.on .n{color:var(--em-700)}
+.db-item.zero{color:var(--ink-4)}
+.db-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.db-head h4{margin:0;font-size:15px}
+.db-head .meta{font-size:12px;color:var(--ink-3)}
+.db-scroll{overflow:auto;max-height:66vh;border:1px solid var(--line);border-radius:10px}
+.db-scroll table{font-size:12px}
+.db-scroll th{position:sticky;top:0;background:#fff;z-index:2;white-space:nowrap}
+.db-scroll td{white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.db-null{color:var(--ink-4);font-style:italic}
+.db-pager{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:var(--ink-3)}
+.db-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);cursor:pointer}
+
+/* ---------- agent panel ---------- */
+.ask-wrap{display:flex;flex-direction:column;height:calc(100vh - 210px);min-height:420px}
+.ask-scroll{flex:1;overflow-y:auto;padding:4px 2px 12px}
+.ask-turn{margin-bottom:22px}
+.ask-q{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.ask-q .who{flex:0 0 auto;width:24px;height:24px;border-radius:7px;background:var(--ink);
+  color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.ask-q .txt{font-weight:600;padding-top:3px}
+.ask-a{display:flex;gap:10px;align-items:flex-start}
+.ask-a .who{flex:0 0 auto;width:24px;height:24px;border-radius:7px;
+  background:linear-gradient(140deg,var(--em-500),var(--em-700));color:#fff;
+  display:grid;place-items:center;font-size:11px;font-weight:700}
+.ask-a .body{flex:1;min-width:0}
+.ask-a .body p{margin:0 0 10px}
+.ask-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.ask-tool{font-family:var(--mono);font-size:11px;background:var(--bg-2);border:1px solid var(--line);
+  border-radius:6px;padding:2px 7px;color:var(--ink-3)}
+.ask-cite{font-family:var(--mono);font-size:11px;background:var(--em-50);border:1px solid var(--em-200);
+  border-radius:6px;padding:2px 7px;color:var(--em-700);cursor:pointer}
+.ask-cite:hover{background:var(--em-100)}
+.ask-warn{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red);
+  border-radius:8px;padding:8px 10px;font-size:12px;margin-top:10px}
+.ask-form{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.ask-form input{flex:1}
+.ask-seed{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.ask-seed button{text-align:left;font-size:12px;border:1px solid var(--line);background:#fff;
+  border-radius:9px;padding:8px 11px;cursor:pointer;color:var(--ink-2);max-width:100%}
+.ask-seed button:hover{border-color:var(--em-300);background:var(--em-50);color:var(--em-900)}
+.ask-note{font-size:12px;color:var(--ink-3);line-height:1.6}
+
 /* ---------- chrome ---------- */
 header.top{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;gap:16px;padding:12px 24px;flex-wrap:wrap}
@@ -173,6 +228,7 @@ pre{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;paddin
     <select id="runsel" style="min-width:300px"></select>
     <button class="btn" id="btn-generate">Generate dataset</button>
     <button class="btn" id="btn-tick" title="Append the next settlement cycle to this dataset and re-reconcile everything">Simulate next cycle</button>
+    <button class="btn" id="btn-fixture" title="Load the fixed, hand-authored evaluation batch: same rows every time, every expected outcome stated in the file">Evaluation batch</button>
     <button class="btn primary" id="btn-run">Run reconciliation</button>
   </div>
   <nav class="tabs" id="tabs"></nav>
@@ -190,7 +246,9 @@ pre{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;paddin
    ========================================================================== */
 const S = {tab:"dashboard", runs:[], run:null, metrics:null, settlements:[], exceptions:[],
            sellers:[], detail:null, sid:null, trace:null, traceQ:{type:"payment", id:""},
-           filters:{status:"", tier:"", severity:"", kind:"", q:""}, busy:false, toast:null};
+           filters:{status:"", tier:"", severity:"", kind:"", q:""}, busy:false, toast:null,
+           agent:{status:null, turns:[], asking:false, draft:"", error:null},
+           data:{tables:[], table:null, page:null, offset:0, raw:false, busy:false}};
 
 const $  = (s,r=document)=>r.querySelector(s);
 const el = (t,a={},...c)=>{const n=document.createElement(t);
@@ -234,6 +292,8 @@ function toast(msg, ms=3200){ S.toast=msg; render(); setTimeout(()=>{S.toast=nul
 async function boot(){
   S.runs = await api("/api/runs");
   if(S.runs.length){ await selectRun(S.runs[0].run_id); }
+  await loadAgent();
+  await loadTables(false);
   render();
 }
 async function selectRun(rid){
@@ -244,7 +304,14 @@ async function selectRun(rid){
     api(`/api/runs/${rid}/metrics`), api(`/api/runs/${rid}/settlements`),
     api(`/api/runs/${rid}/exceptions`), api(`/api/runs/${rid}/sellers`)]);
   S.metrics=m; S.settlements=st.settlements; S.exceptions=ex.exceptions; S.sellers=se.sellers;
-  S.detail=null; S.sid=null; S.busy=false; render();
+  S.detail=null; S.sid=null; S.busy=false;
+  // the conversation belongs to the run, so switching runs switches transcripts
+  S.agent.turns=[]; S.agent.error=null;
+  try{ S.agent.turns=(await api(`/api/runs/${rid}/conversation`)).turns||[]; }catch(e){}
+  // the data browser is scoped to the run, so it follows the run selector
+  S.data.page=null; S.data.offset=0;
+  await loadTables(false);
+  render();
 }
 async function openSettlement(sid){
   S.busy=true; S.tab="detail"; S.sid=sid; render();
@@ -942,9 +1009,222 @@ function traceTree(t){
   return out;
 }
 
+/* ============================ DATA BROWSER ============================= */
+/* Every table in the schema, scoped to the run you are looking at, with live
+   row counts. Read-only: there is no write path from this tab, and the table
+   name is validated against the database catalogue server-side before it ever
+   reaches a query. */
+async function loadTables(keepSelection){
+  if(!S.run) return;
+  try{
+    const r = await api(`/api/runs/${S.run.run_id}/tables`);
+    S.data.tables = r.tables || [];
+  }catch(e){ S.data.tables = []; }
+  if(keepSelection && S.data.table) await openTable(S.data.table, S.data.offset, true);
+}
+async function openTable(name, offset, quiet){
+  S.data.table = name; S.data.offset = Math.max(0, offset||0);
+  if(!quiet){ S.data.busy = true; render(); }
+  try{
+    S.data.page = await api(
+      `/api/runs/${S.run.run_id}/tables/${name}?limit=50&offset=${S.data.offset}`);
+  }catch(e){ S.data.page = {table:name, rows:[], columns:[], total_rows:0, error:e.message}; }
+  S.data.busy = false; render();
+}
+function cellText(v, col, raw){
+  if(v===null || v===undefined) return el("span",{class:"db-null"},"null");
+  if(col.money && !raw && typeof v === "number") return rupees(v);
+  if(typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+function viewData(){
+  const d = S.data;
+  const groups = [["data","Generated data"],["results","Engine results"]];
+  const list = el("div",{class:"db-list"});
+  for(const [key,label] of groups){
+    const rows = d.tables.filter(t=>t.group===key);
+    if(!rows.length) continue;
+    list.appendChild(el("div",{class:"db-group"},label));
+    for(const t of rows){
+      list.appendChild(el("div",{
+        class:"db-item"+(d.table===t.table?" on":"")+(t.rows?"":" zero"),
+        title:`scoped by ${t.scope} · ${t.columns} columns`,
+        onclick:()=>openTable(t.table,0)},
+        el("span",{},t.table), el("span",{class:"n"},t.rows.toLocaleString())));
+    }
+  }
+
+  let right;
+  if(d.busy){
+    right = el("div",{class:"empty"},el("span",{class:"spin"})," loading rows…");
+  } else if(!d.page){
+    right = el("div",{class:"ask-note"},
+      el("p",{},"Pick a table on the left to see its actual rows for this run."),
+      el("p",{},"Counts update every time you generate a dataset or simulate a cycle, so "+
+                "this is where you confirm new data actually landed. ",
+        el("b",{},"Generated data"), " is the book the engine reads; ",
+        el("b",{},"Engine results"), " is what it concluded — deltas, attributions, "+
+        "exceptions and the audit trail, all tagged with this run's id."));
+  } else if(d.page.error){
+    right = el("div",{class:"ask-warn"}, d.page.error);
+  } else {
+    const p = d.page;
+    const from = p.total_rows ? p.offset+1 : 0, to = Math.min(p.offset+p.limit, p.total_rows);
+    right = el("div",{},
+      el("div",{class:"db-head"},
+        el("h4",{},p.table),
+        el("span",{class:"meta"},
+          `${p.total_rows.toLocaleString()} rows · ${p.columns.length} columns · scoped by ${p.scope}`),
+        el("span",{class:"spacer",style:"flex:1"}),
+        el("label",{class:"db-toggle"},
+          el("input",{type:"checkbox", ...(d.raw?{checked:"checked"}:{}),
+            onchange:e=>{d.raw=e.target.checked; render();}}),
+          "raw paise")),
+      el("div",{class:"db-scroll"},
+        el("table",{},
+          el("thead",{},el("tr",{},...p.columns.map(c=>
+            el("th",{class:c.money?"num":"",title:c.type},c.name)))),
+          el("tbody",{},...p.rows.map(r=>el("tr",{class:"zebra"},
+            ...p.columns.map(c=>el("td",{class:c.money?"num":""},
+              cellText(r[c.name], c, d.raw)))))))),
+      el("div",{class:"db-pager"},
+        el("button",{class:"btn", disabled:p.offset?null:"disabled",
+          onclick:()=>openTable(p.table, Math.max(0,p.offset-p.limit))},"← Previous"),
+        el("button",{class:"btn", disabled:(p.offset+p.limit<p.total_rows)?null:"disabled",
+          onclick:()=>openTable(p.table, p.offset+p.limit)},"Next →"),
+        el("span",{}, p.total_rows ? `showing ${from}–${to} of ${p.total_rows.toLocaleString()}`
+                                   : "no rows for this run yet")));
+  }
+
+  return el("div",{class:"card"},
+    el("h3",{},"Data",
+      el("span",{class:"sub"},
+        "every table in the schema, scoped to this run — read-only"),
+      el("button",{class:"btn",style:"float:right",
+        onclick:()=>loadTables(true).then(render)},"Refresh")),
+    el("div",{class:"db-wrap"}, list, right));
+}
+
+/* ============================ AGENT PANEL ============================== */
+/* The agent reads persisted results and explains them. It never recomputes a
+   figure and cannot change one, so this panel is deliberately read-only: the
+   numbers on every other tab are unaffected by anything said here. */
+async function loadAgent(){
+  try{ S.agent.status = await api("/api/agent/status"); }
+  catch(e){ S.agent.status = {configured:false, label:"the model provider", error:e.message}; }
+  if(S.run){
+    try{ S.agent.turns = (await api(`/api/runs/${S.run.run_id}/conversation`)).turns || []; }
+    catch(e){ S.agent.turns = []; }
+  }
+}
+async function askAgent(q){
+  q = (q||"").trim();
+  if(!q || S.agent.asking) return;
+  S.agent.asking = true; S.agent.error = null; S.agent.draft = ""; render();
+  try{
+    const r = await api(`/api/runs/${S.run.run_id}/ask`, {method:"POST",
+      headers:{"content-type":"application/json"}, body:JSON.stringify({question:q})});
+    S.agent.turns.push({turn_id:r.turn_id, question:q, answer:r.answer,
+      tool_calls:r.tool_calls, tool_call_count:r.tool_call_count, citations:r.citations,
+      unsupported_references:r.unsupported_references, grounded:r.grounded,
+      model:r.model, provider:r.provider, elapsed_seconds:r.elapsed_seconds,
+      stop_reason:r.stop_reason});
+  }catch(e){ S.agent.error = e.message; }
+  S.agent.asking = false; render();
+  const sc=$(".ask-scroll"); if(sc) sc.scrollTop = sc.scrollHeight;
+}
+function jumpToCitation(id){
+  const sid=(id.match(/^(SET_\d+)/)||[])[1];
+  if(sid){ openSettlement(sid); return; }
+  if(/^(P|R|A|T|O|B|L)_\d+$/.test(id)){
+    const kind={P:"payment",R:"refund",A:"seller_allocation",T:"transfer",O:"order",
+                B:"bank_transaction",L:"ledger_entry"}[id[0]];
+    S.traceQ={type:kind,id}; S.tab="trace"; runTrace(); return;
+  }
+  S.tab="exceptions"; S.filters.q=id; render();
+}
+function paragraphs(text){
+  return String(text||"").split(/\n{2,}/).filter(Boolean)
+    .map(t=>el("p",{},t.replace(/\n/g," ")));
+}
+function viewAsk(){
+  const st=S.agent.status||{};
+  const body=el("div",{class:"ask-wrap"});
+  const scroll=el("div",{class:"ask-scroll"});
+
+  if(!st.configured){
+    scroll.appendChild(el("div",{class:"ask-note"},
+      el("p",{},el("b",{},"The investigation agent is not configured.")),
+      el("p",{},`Set an API key for ${st.label||"a provider"} and restart the API:`),
+      el("pre",{class:"mono",style:"background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto"},
+        (st.expected_env||["GEMINI_API_KEY"]).map(k=>`export ${k}=…`).join("\n")+
+        "\n./run.sh serve"),
+      el("p",{},"Everything else on this page works without it. The reconciliation is ",
+        el("b",{},"deterministic"),
+        " — the agent only reads results the engine already computed and explains them.")));
+  } else if(!S.agent.turns.length && !S.agent.asking){
+    scroll.appendChild(el("div",{class:"ask-note"},
+      el("p",{},"Ask about anything in this run. The agent has read-only tools over the "+
+        "persisted deltas, attribution evidence, matcher trail, ledger postings and audit log. "+
+        "It quotes figures the engine computed and cites the records it read — it never "+
+        "recalculates a number, and it cannot change one."),
+      el("div",{class:"ask-seed"}, ...(st.suggested_questions||[]).map(q=>
+        el("button",{onclick:()=>askAgent(q)}, q)))));
+  }
+
+  for(const t of S.agent.turns){
+    const turn=el("div",{class:"ask-turn"},
+      el("div",{class:"ask-q"}, el("div",{class:"who"},"You"), el("div",{class:"txt"},t.question)),
+      el("div",{class:"ask-a"}, el("div",{class:"who"},"₹"),
+        el("div",{class:"body"}, ...paragraphs(t.answer),
+          (t.unsupported_references||[]).length
+            ? el("div",{class:"ask-warn"},
+                el("b",{},"Unverified reference. "),
+                "This answer named "+t.unsupported_references.join(", ")+
+                ", which did not appear in any record the agent actually read. Treat that part "+
+                "as unsupported.")
+            : null,
+          el("div",{class:"ask-meta"},
+            ...(t.citations||[]).slice(0,12).map(c=>
+              el("button",{class:"ask-cite",title:"open this record",
+                onclick:()=>jumpToCitation(c)}, c)),
+            ...(t.tool_calls||[]).map(c=>el("span",{class:"ask-tool"}, c.tool)),
+            el("span",{class:"ask-tool"},
+              `${t.model||"model"} · ${t.elapsed_seconds ?? "?"}s`)))));
+    scroll.appendChild(turn);
+  }
+  if(S.agent.asking){
+    scroll.appendChild(el("div",{class:"ask-a"}, el("div",{class:"who"},"₹"),
+      el("div",{class:"body",style:"color:var(--ink-3)"},
+        el("span",{class:"spin"}), " reading the run…")));
+  }
+  if(S.agent.error){
+    scroll.appendChild(el("div",{class:"ask-warn"}, S.agent.error));
+  }
+  body.appendChild(scroll);
+
+  const input=el("input",{type:"text",placeholder:
+    st.configured ? "Ask about a settlement, an exception, a seller…"
+                  : "Set an API key to enable the agent",
+    value:S.agent.draft, disabled:st.configured?null:"disabled",
+    oninput:e=>{S.agent.draft=e.target.value;},
+    onkeydown:e=>{if(e.key==="Enter"){e.preventDefault();askAgent(e.target.value);}}});
+  body.appendChild(el("form",{class:"ask-form",onsubmit:e=>{e.preventDefault();askAgent(input.value);}},
+    input,
+    el("button",{class:"btn primary",type:"submit",
+      disabled:(st.configured && !S.agent.asking)?null:"disabled"},
+      S.agent.asking?"Reading…":"Ask")));
+  return el("div",{class:"card"},
+    el("h3",{},"Ask the agent",
+      el("span",{class:"sub"},
+        "read-only over this run — explains the numbers, never changes them")),
+    body);
+}
+
 /* ================================ RENDER =============================== */
 const TABS=[["dashboard","Dashboard"],["settlements","Settlements"],["detail","Settlement detail"],
-  ["exceptions","Exceptions"],["sellers","Seller payouts"],["trace","Trace money"]];
+  ["exceptions","Exceptions"],["sellers","Seller payouts"],["trace","Trace money"],
+  ["data","Data"],["ask","Ask the agent"]];
 function render(){
   const nav=$("#tabs"); nav.innerHTML="";
   for(const [k,label] of TABS){
@@ -965,7 +1245,8 @@ function render(){
     app.appendChild(el("div",{class:"empty"},el("span",{class:"spin"})," loading settlement…"));
   } else {
     const v={dashboard:viewDashboard,settlements:viewSettlements,detail:viewDetail,
-      exceptions:viewExceptions,sellers:viewSellers,trace:viewTrace}[S.tab];
+      exceptions:viewExceptions,sellers:viewSellers,trace:viewTrace,ask:viewAsk,
+      data:viewData}[S.tab];
     app.appendChild(v());
   }
   document.querySelectorAll(".toast").forEach(n=>n.remove());
@@ -999,7 +1280,9 @@ $("#btn-tick").addEventListener("click", async ()=>{
         body:JSON.stringify({settlements:10, clean:false, reconcile:true})});
       window.__lastDataset=target;
       S.runs=await api("/api/runs");
-      if(r.run){ await selectRun(r.run.run_id); S.tab="dashboard"; }
+      const wasOnData = S.tab==="data";
+      if(r.run){ await selectRun(r.run.run_id); S.tab = wasOnData ? "data" : "dashboard"; }
+      await loadTables(true);
       const bits=[`Cycle ${r.batch} · ${r.appended.settlements} new settlements`,
                   `${r.appended.total_financial_records.toLocaleString()} records`,
                   `${r.appended.ground_truth_anomalies} planted`];
@@ -1009,6 +1292,24 @@ $("#btn-tick").addEventListener("click", async ()=>{
     }
   }catch(e){toast(e.message)}
   b.disabled=false; b.textContent="Simulate next cycle";
+});
+$("#btn-fixture").addEventListener("click", async ()=>{
+  const b=$("#btn-fixture"); b.disabled=true; b.textContent="Loading…";
+  try{
+    const r=await api("/api/fixtures/evaluation-batch",{method:"POST",
+      headers:{"content-type":"application/json"}, body:"{}"});
+    window.__lastDataset=r.dataset_id;
+    S.runs=await api("/api/runs");
+    if(r.run){ await selectRun(r.run.run_id); S.tab="dashboard"; }
+    await loadTables(true);
+    const g=(r.run&&r.run.ground_truth)||{};
+    toast(`Evaluation batch · ${r.row_counts.scenarios} scenarios · `+
+      `${r.row_counts.total_financial_records.toLocaleString()} records · `+
+      `detection ${g.resolvable_detection_rate_pct ?? "?"}% · `+
+      `traps ${g.false_positive_traps_avoided ?? 0}/${g.false_positive_traps ?? 0} · `+
+      `${g.false_auto_resolution_count ?? 0} false auto-resolutions`);
+  }catch(e){toast(e.message)}
+  b.disabled=false; b.textContent="Evaluation batch";
 });
 $("#btn-run").addEventListener("click", async ()=>{
   const b=$("#btn-run"); b.disabled=true; b.textContent="Reconciling…";

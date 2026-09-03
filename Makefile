@@ -37,26 +37,8 @@ generate-clean:           ## generate WITHOUT anomalies (the phase-4 gate)
 	$(PYTHON) -m generator.generate --seed $(SEED) --settlements $(SETTLEMENTS) \
 	  --label clean --clean
 
-db-shell:                 ## open psql against the project database
-	psql "$$DATABASE_URL"
-
-db-summary:               ## every dataset: settlements, records, cycles, runs
-	@psql "$$DATABASE_URL" -c "SELECT d.label, left(d.dataset_id::text,8) AS dataset, d.seed, \
-	   (d.row_counts->>'settlements')::int AS settlements, \
-	   (d.row_counts->>'total_financial_records')::int AS records, \
-	   jsonb_array_length(COALESCE(d.row_counts->'batches','[]')) AS cycles, \
-	   (SELECT count(*) FROM reconciliation_runs r WHERE r.dataset_id=d.dataset_id) AS runs \
-	 FROM datasets d WHERE (d.row_counts->>'settlements')::int > 1 ORDER BY d.generated_at DESC;"
-
-agent-schema:             ## add the agent transcript table to a LIVE db (idempotent)
-	psql "$$DATABASE_URL" -q -f db/agent.sql
-	@echo "agent_transcripts ready."
-
 reconcile:                ## run the engine over the newest dataset
 	$(PYTHON) -m scripts.reconcile
-
-evaluation-batch:         ## load the fixed, hand-authored evaluation batch
-	$(PYTHON) -m fixtures.loader
 
 tick:                     ## append one settlement cycle, then re-reconcile
 	$(PYTHON) -m generator.append --settlements $(TICK) $(if $(DATASET),--dataset $(DATASET),)

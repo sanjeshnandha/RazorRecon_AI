@@ -1,0 +1,1519 @@
+{
+  "batch_id": "EVALUATION_BATCH_V1",
+  "dataset_id": "e0a1f5c2-0000-4000-8000-000000000001",
+  "title": "Static evaluation batch -- hand-authored, fixed, no randomness",
+  "policy_version": "1.0.0",
+  "config_hash": "8e2326ce0e4335ea",
+  "how_to_read": "Every scenario is one settlement. `note` states what was done and why, `expected` states what the engine must therefore conclude, and `ground_truth` is scored by the engine's own honesty metrics. Nothing here is sampled or seeded: change policy.yaml and this file must be re-authored, which is the point.",
+  "scenario_count": 22,
+  "scenarios": [
+    {
+      "scenario_id": "EV01",
+      "title": "Clean settlement across three payment methods",
+      "family": "CLEAN",
+      "note": "UPI at 0 bps, CARD at 200, NETBANKING at 175, each fee and its 18% GST taken straight from the policy registry. Nothing is wrong here.",
+      "settlement": {
+        "settlement_id": "EV_01",
+        "settlement_period_start": "2026-02-02",
+        "settlement_period_end": "2026-02-03",
+        "settlement_date": "2026-02-05",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26020500000001"
+      },
+      "payments": [
+        {
+          "payment_id": "EV01_P1",
+          "order_id": "O_EV01_P1",
+          "amount_paise": 250000,
+          "payment_method": "UPI",
+          "captured_at": "2026-02-02",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 0,
+          "policy_tax_paise": 0,
+          "charged_fee_paise": 0,
+          "charged_tax_paise": 0
+        },
+        {
+          "payment_id": "EV01_P2",
+          "order_id": "O_EV01_P2",
+          "amount_paise": 1000000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-03",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 20000,
+          "policy_tax_paise": 3600,
+          "charged_fee_paise": 20000,
+          "charged_tax_paise": 3600
+        },
+        {
+          "payment_id": "EV01_P3",
+          "order_id": "O_EV01_P3",
+          "amount_paise": 480000,
+          "payment_method": "NETBANKING",
+          "captured_at": "2026-02-02",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 8400,
+          "policy_tax_paise": 1512,
+          "charged_fee_paise": 8400,
+          "charged_tax_paise": 1512
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": []
+      }
+    },
+    {
+      "scenario_id": "EV02",
+      "title": "Retried order: two failed attempts, then a capture",
+      "family": "CLEAN",
+      "note": "EV02_P1, P2 and P3 are three attempts at the SAME order O_EV02_A. Only the captured attempt may reach a settlement -- a FAILED payment in a settlement is a hard structural error (INV-B5), so this is the control that proves the engine excludes them rather than summing them.",
+      "settlement": {
+        "settlement_id": "EV_02",
+        "settlement_period_start": "2026-02-04",
+        "settlement_period_end": "2026-02-05",
+        "settlement_date": "2026-02-07",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26020700000002"
+      },
+      "payments": [
+        {
+          "payment_id": "EV02_P1",
+          "order_id": "O_EV02_A",
+          "amount_paise": 620000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-04",
+          "payment_status": "FAILED",
+          "policy_fee_paise": 12400,
+          "policy_tax_paise": 2232,
+          "charged_fee_paise": 12400,
+          "charged_tax_paise": 2232
+        },
+        {
+          "payment_id": "EV02_P2",
+          "order_id": "O_EV02_A",
+          "amount_paise": 620000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-04",
+          "payment_status": "FAILED",
+          "policy_fee_paise": 12400,
+          "policy_tax_paise": 2232,
+          "charged_fee_paise": 12400,
+          "charged_tax_paise": 2232
+        },
+        {
+          "payment_id": "EV02_P3",
+          "order_id": "O_EV02_A",
+          "amount_paise": 620000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-04",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 12400,
+          "policy_tax_paise": 2232,
+          "charged_fee_paise": 12400,
+          "charged_tax_paise": 2232
+        },
+        {
+          "payment_id": "EV02_P4",
+          "order_id": "O_EV02_P4",
+          "amount_paise": 310000,
+          "payment_method": "WALLET",
+          "captured_at": "2026-02-05",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 6200,
+          "policy_tax_paise": 1116,
+          "charged_fee_paise": 6200,
+          "charged_tax_paise": 1116
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": []
+      }
+    },
+    {
+      "scenario_id": "EV03",
+      "title": "Refund inside the period, correctly deducted",
+      "family": "CLEAN",
+      "note": "300000 refunded against a 900000 CARD payment, dated inside the period and itemised. The gateway fee is NOT returned on a refund (POLICY.REFUND.mdr_refunded = false), so the fee still stands on the full 900000. Getting that backwards would show up as a Delta-1.",
+      "settlement": {
+        "settlement_id": "EV_03",
+        "settlement_period_start": "2026-02-06",
+        "settlement_period_end": "2026-02-07",
+        "settlement_date": "2026-02-10",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26021000000003"
+      },
+      "payments": [
+        {
+          "payment_id": "EV03_P1",
+          "order_id": "O_EV03_P1",
+          "amount_paise": 900000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-06",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 18000,
+          "policy_tax_paise": 3240,
+          "charged_fee_paise": 18000,
+          "charged_tax_paise": 3240
+        }
+      ],
+      "refunds": [
+        {
+          "refund_id": "EV03_R1",
+          "payment_id": "EV03_P1",
+          "refund_amount_paise": 300000,
+          "refund_status": "PROCESSED",
+          "refund_date": "2026-02-07",
+          "itemised": true,
+          "itemise_in": null
+        }
+      ],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": []
+      }
+    },
+    {
+      "scenario_id": "EV04",
+      "title": "Gateway fee charged at 250 bps instead of the policy 200",
+      "family": "D1",
+      "note": "Policy CARD MDR is 200 bps: 1000000 * 200 / 10000 = 20000, GST 3600. The settlement charged 25000 and taxed its own inflated fee at 4500. Short by 5900 paise, of which 5000 is fee and 900 is the tax consequence. Both legs must be attributed, leaving residual zero.",
+      "settlement": {
+        "settlement_id": "EV_04",
+        "settlement_period_start": "2026-02-08",
+        "settlement_period_end": "2026-02-09",
+        "settlement_date": "2026-02-11",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26021100000004"
+      },
+      "payments": [
+        {
+          "payment_id": "EV04_P1",
+          "order_id": "O_EV04_P1",
+          "amount_paise": 1000000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-08",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 20000,
+          "policy_tax_paise": 3600,
+          "charged_fee_paise": 25000,
+          "charged_tax_paise": 4500
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D1_FEE_RATE_DRIFT",
+          "subject_type": "payment",
+          "subject_id": "EV04_P1",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "FEE_RATE_MISMATCH",
+          "planted_amount_paise": 5900,
+          "is_resolvable": true,
+          "notes": "Fee charged at 250 bps against a policy of 200."
+        }
+      ],
+      "expected": {
+        "d1_paise": 5900,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "FEE_RATE_MISMATCH"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV05",
+      "title": "GST computed on the aggregate fee instead of per item",
+      "family": "D1",
+      "note": "Fees [2404, 3610, 4814, 6016, 7220, 8422] sum to 32486. Policy says PER_ITEM: 433 + 650 + 867 + 1083 + 1300 + 1516 = 5849. The settlement taxed the total instead: GST(32486) = 5847. The difference is 2 paise -- small, systematic, and invisible unless the engine recomputes per item.",
+      "settlement": {
+        "settlement_id": "EV_05",
+        "settlement_period_start": "2026-02-10",
+        "settlement_period_end": "2026-02-11",
+        "settlement_date": "2026-02-13",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26021300000005"
+      },
+      "payments": [
+        {
+          "payment_id": "EV05_P1",
+          "order_id": "O_EV05_P1",
+          "amount_paise": 120200,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 2404,
+          "policy_tax_paise": 433,
+          "charged_fee_paise": 2404,
+          "charged_tax_paise": 433
+        },
+        {
+          "payment_id": "EV05_P2",
+          "order_id": "O_EV05_P2",
+          "amount_paise": 180500,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 3610,
+          "policy_tax_paise": 650,
+          "charged_fee_paise": 3610,
+          "charged_tax_paise": 650
+        },
+        {
+          "payment_id": "EV05_P3",
+          "order_id": "O_EV05_P3",
+          "amount_paise": 240700,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 4814,
+          "policy_tax_paise": 867,
+          "charged_fee_paise": 4814,
+          "charged_tax_paise": 867
+        },
+        {
+          "payment_id": "EV05_P4",
+          "order_id": "O_EV05_P4",
+          "amount_paise": 300800,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 6016,
+          "policy_tax_paise": 1083,
+          "charged_fee_paise": 6016,
+          "charged_tax_paise": 1083
+        },
+        {
+          "payment_id": "EV05_P5",
+          "order_id": "O_EV05_P5",
+          "amount_paise": 361000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 7220,
+          "policy_tax_paise": 1300,
+          "charged_fee_paise": 7220,
+          "charged_tax_paise": 1300
+        },
+        {
+          "payment_id": "EV05_P6",
+          "order_id": "O_EV05_P6",
+          "amount_paise": 421100,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 8422,
+          "policy_tax_paise": 1516,
+          "charged_fee_paise": 8422,
+          "charged_tax_paise": 1516
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D1_TAX_AGGREGATE_ROUNDING",
+          "subject_type": "settlement",
+          "subject_id": "EV_05",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "TAX_ROUNDING_MISMATCH",
+          "planted_amount_paise": 2,
+          "is_resolvable": true,
+          "notes": "GST taken on the aggregate fee; 2 paise apart from the per-item method the policy mandates."
+        }
+      ],
+      "expected": {
+        "d1_paise": -2,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "TAX_ROUNDING_MISMATCH"
+        ]
+      },
+      "aggregate_tax_paise": 5847
+    },
+    {
+      "scenario_id": "EV06",
+      "title": "Processed refund inside the period, never deducted",
+      "family": "D1",
+      "note": "EV06_R1 is PROCESSED and dated inside the period, so the settlement owes 400000 less than it paid. The refund exists in the refunds table but no REFUND settlement item was written, so the header overstates the net by exactly the refund.",
+      "settlement": {
+        "settlement_id": "EV_06",
+        "settlement_period_start": "2026-02-12",
+        "settlement_period_end": "2026-02-13",
+        "settlement_date": "2026-02-17",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26021700000006"
+      },
+      "payments": [
+        {
+          "payment_id": "EV06_P1",
+          "order_id": "O_EV06_P1",
+          "amount_paise": 1200000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-12",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 24000,
+          "policy_tax_paise": 4320,
+          "charged_fee_paise": 24000,
+          "charged_tax_paise": 4320
+        }
+      ],
+      "refunds": [
+        {
+          "refund_id": "EV06_R1",
+          "payment_id": "EV06_P1",
+          "refund_amount_paise": 400000,
+          "refund_status": "PROCESSED",
+          "refund_date": "2026-02-13",
+          "itemised": false,
+          "itemise_in": null
+        }
+      ],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D1_REFUND_NOT_DEDUCTED",
+          "subject_type": "refund",
+          "subject_id": "EV06_R1",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "REFUND_NOT_DEDUCTED",
+          "planted_amount_paise": 400000,
+          "is_resolvable": true,
+          "notes": "A processed in-period refund that never reached the settlement."
+        }
+      ],
+      "expected": {
+        "d1_paise": -400000,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "REFUND_NOT_DEDUCTED"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV07",
+      "title": "Refund after period close belongs to the next settlement",
+      "family": "TRAP",
+      "note": "EV07_R1 is dated 2026-02-16 -- after this settlement's period closes on 2026-02-15 but before it pays out on 2026-02-18. Periods tile the calendar, so the refund belongs to EV_08, and it is correctly itemised there. Deducting it HERE would be a fabricated explanation, and flagging either settlement is a false positive. The correct answer is silence on both.",
+      "settlement": {
+        "settlement_id": "EV_07",
+        "settlement_period_start": "2026-02-14",
+        "settlement_period_end": "2026-02-15",
+        "settlement_date": "2026-02-18",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26021800000007"
+      },
+      "payments": [
+        {
+          "payment_id": "EV07_P1",
+          "order_id": "O_EV07_P1",
+          "amount_paise": 800000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-14",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 16000,
+          "policy_tax_paise": 2880,
+          "charged_fee_paise": 16000,
+          "charged_tax_paise": 2880
+        }
+      ],
+      "refunds": [
+        {
+          "refund_id": "EV07_R1",
+          "payment_id": "EV07_P1",
+          "refund_amount_paise": 150000,
+          "refund_status": "PROCESSED",
+          "refund_date": "2026-02-16",
+          "itemised": true,
+          "itemise_in": "EV_08"
+        }
+      ],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "TRAP_REFUND_OUTSIDE_PERIOD",
+          "subject_type": "refund",
+          "subject_id": "EV07_R1",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "NONE",
+          "planted_amount_paise": 150000,
+          "is_resolvable": true,
+          "notes": "Refund falls in EV_08's period, not this one. Neither settlement may raise an exception."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": []
+      }
+    },
+    {
+      "scenario_id": "EV08",
+      "title": "Header gross understates the sum of its own items",
+      "family": "D1",
+      "note": "The line items are correct; the header claims 75000 paise less gross than they add up to. settlement_items is the source of truth, so the header is what is wrong. It also receives EV07_R1, the refund whose period falls here -- correctly itemised, and therefore not an anomaly.",
+      "settlement": {
+        "settlement_id": "EV_08",
+        "settlement_period_start": "2026-02-16",
+        "settlement_period_end": "2026-02-17",
+        "settlement_date": "2026-02-19",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26021900000008"
+      },
+      "payments": [
+        {
+          "payment_id": "EV08_P1",
+          "order_id": "O_EV08_P1",
+          "amount_paise": 700000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-16",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 14000,
+          "policy_tax_paise": 2520,
+          "charged_fee_paise": 14000,
+          "charged_tax_paise": 2520
+        },
+        {
+          "payment_id": "EV08_P2",
+          "order_id": "O_EV08_P2",
+          "amount_paise": 250000,
+          "payment_method": "UPI",
+          "captured_at": "2026-02-17",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 0,
+          "policy_tax_paise": 0,
+          "charged_fee_paise": 0,
+          "charged_tax_paise": 0
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": {
+        "gross_delta_paise": -75000,
+        "net_delta_paise": -75000
+      },
+      "ground_truth": [
+        {
+          "anomaly_type": "D1_HEADER_ROLLUP_MISMATCH",
+          "subject_type": "settlement",
+          "subject_id": "EV_08",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "HEADER_ROLLUP_MISMATCH",
+          "planted_amount_paise": 75000,
+          "is_resolvable": true,
+          "notes": "Header gross is 75000 paise below the sum of its items."
+        }
+      ],
+      "expected": {
+        "d1_paise": 75000,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "HEADER_ROLLUP_MISMATCH"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV09",
+      "title": "Chargeback applied to the header but never itemised",
+      "family": "D1",
+      "note": "A 90000 paise chargeback reduced the header net, but no ADJUSTMENT line item was written for it. The money moved and the adjustment is real -- the settlement simply does not show its working.",
+      "settlement": {
+        "settlement_id": "EV_09",
+        "settlement_period_start": "2026-02-18",
+        "settlement_period_end": "2026-02-19",
+        "settlement_date": "2026-02-21",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26022100000009"
+      },
+      "payments": [
+        {
+          "payment_id": "EV09_P1",
+          "order_id": "O_EV09_P1",
+          "amount_paise": 950000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-18",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 19000,
+          "policy_tax_paise": 3420,
+          "charged_fee_paise": 19000,
+          "charged_tax_paise": 3420
+        }
+      ],
+      "refunds": [],
+      "adjustments": [
+        {
+          "adjustment_id": "EV09_A1",
+          "adjustment_type": "CHARGEBACK",
+          "amount_paise": -90000,
+          "status": "APPLIED",
+          "itemised": false,
+          "ref_payment_id": "EV09_P1"
+        }
+      ],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": {
+        "net_delta_paise": -90000
+      },
+      "ground_truth": [
+        {
+          "anomaly_type": "D1_ADJUSTMENT_UNITEMISED",
+          "subject_type": "adjustment",
+          "subject_id": "EV09_A1",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "ADJUSTMENT_UNEXPLAINED",
+          "planted_amount_paise": 90000,
+          "is_resolvable": true,
+          "notes": "Chargeback hit the header with no matching settlement item."
+        }
+      ],
+      "expected": {
+        "d1_paise": 90000,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "ADJUSTMENT_UNEXPLAINED"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV10",
+      "title": "No bank credit for this settlement at all",
+      "family": "D2",
+      "note": "The settlement is arithmetically perfect and the books agree, but no credit carrying this UTR, amount or date exists in the statement. Nothing was offered to any matching pass -- money absent, not mismatched.",
+      "settlement": {
+        "settlement_id": "EV_10",
+        "settlement_period_start": "2026-02-20",
+        "settlement_period_end": "2026-02-21",
+        "settlement_date": "2026-02-24",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26022400000010"
+      },
+      "payments": [
+        {
+          "payment_id": "EV10_P1",
+          "order_id": "O_EV10_P1",
+          "amount_paise": 1400000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-20",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 28000,
+          "policy_tax_paise": 5040,
+          "charged_fee_paise": 28000,
+          "charged_tax_paise": 5040
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": [],
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D2_MISSING_CREDIT",
+          "subject_type": "settlement",
+          "subject_id": "EV_10",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "MISSING_BANK_CREDIT",
+          "planted_amount_paise": 1349480,
+          "is_resolvable": true,
+          "notes": "The settlement's net never arrived in the bank statement."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "C",
+        "exception_types": [
+          "MISSING_BANK_CREDIT"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV11",
+      "title": "One settlement arrives as two unlabelled credits",
+      "family": "D2",
+      "note": "The bank paid it in two parts, neither carrying a UTR and neither matching the net on its own. Bounded subset-sum over unmatched credits resolves it -- and because the enumeration is bounded, the resolution is provable rather than a guess.",
+      "settlement": {
+        "settlement_id": "EV_11",
+        "settlement_period_start": "2026-02-22",
+        "settlement_period_end": "2026-02-23",
+        "settlement_date": "2026-02-25",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26022500000011"
+      },
+      "payments": [
+        {
+          "payment_id": "EV11_P1",
+          "order_id": "O_EV11_P1",
+          "amount_paise": 900000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-22",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 18000,
+          "policy_tax_paise": 3240,
+          "charged_fee_paise": 18000,
+          "charged_tax_paise": 3240
+        },
+        {
+          "payment_id": "EV11_P2",
+          "order_id": "O_EV11_P2",
+          "amount_paise": 600000,
+          "payment_method": "NETBANKING",
+          "captured_at": "2026-02-23",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 10500,
+          "policy_tax_paise": 1890,
+          "charged_fee_paise": 10500,
+          "charged_tax_paise": 1890
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": "SPLIT",
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D2_SPLIT_CREDIT",
+          "subject_type": "settlement",
+          "subject_id": "EV_11",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "SPLIT_BANK_CREDIT",
+          "planted_amount_paise": 0,
+          "is_resolvable": true,
+          "notes": "Arrived as two credits, neither carrying a UTR."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "SPLIT_BANK_CREDIT"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV12",
+      "title": "Two settlements paid by one bulk credit (first leg)",
+      "family": "D2",
+      "note": "EV_12 and EV_13 were paid together as a single bank line with no UTR. Subset-sum has to work out that one credit covers exactly these two settlements and no other combination.",
+      "settlement": {
+        "settlement_id": "EV_12",
+        "settlement_period_start": "2026-02-24",
+        "settlement_period_end": "2026-02-24",
+        "settlement_date": "2026-02-26",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26022600000012"
+      },
+      "payments": [
+        {
+          "payment_id": "EV12_P1",
+          "order_id": "O_EV12_P1",
+          "amount_paise": 700000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-24",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 14000,
+          "policy_tax_paise": 2520,
+          "charged_fee_paise": 14000,
+          "charged_tax_paise": 2520
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": "MERGE_HEAD",
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D2_MERGED_CREDIT",
+          "subject_type": "settlement",
+          "subject_id": "EV_12",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "MERGED_BANK_CREDIT",
+          "planted_amount_paise": 0,
+          "is_resolvable": true,
+          "notes": "First leg of a bulk credit covering EV_12 and EV_13."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "MERGED_BANK_CREDIT"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV13",
+      "title": "Two settlements paid by one bulk credit (second leg)",
+      "family": "D2",
+      "note": "The partner of EV_12. It has no bank line of its own; its money is inside EV_12's bulk credit.",
+      "settlement": {
+        "settlement_id": "EV_13",
+        "settlement_period_start": "2026-02-25",
+        "settlement_period_end": "2026-02-25",
+        "settlement_date": "2026-02-27",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26022700000013"
+      },
+      "payments": [
+        {
+          "payment_id": "EV13_P1",
+          "order_id": "O_EV13_P1",
+          "amount_paise": 550000,
+          "payment_method": "NETBANKING",
+          "captured_at": "2026-02-26",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 9625,
+          "policy_tax_paise": 1733,
+          "charged_fee_paise": 9625,
+          "charged_tax_paise": 1733
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": "MERGE_TAIL",
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D2_MERGED_CREDIT",
+          "subject_type": "settlement",
+          "subject_id": "EV_13",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "MERGED_BANK_CREDIT",
+          "planted_amount_paise": 0,
+          "is_resolvable": true,
+          "notes": "Second leg of the same bulk credit."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "MERGED_BANK_CREDIT"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV14",
+      "title": "Bank narration carries only the last 8 digits of the UTR",
+      "family": "D2",
+      "note": "The credit is the right amount on the right day, but the narration was truncated to the UTR's tail. A suffix match is weaker evidence than a full reference, so the engine must resolve it on amount and date and record that it did -- not claim a UTR match it does not have.",
+      "settlement": {
+        "settlement_id": "EV_14",
+        "settlement_period_start": "2026-02-26",
+        "settlement_period_end": "2026-02-27",
+        "settlement_date": "2026-03-03",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26030300000014"
+      },
+      "payments": [
+        {
+          "payment_id": "EV14_P1",
+          "order_id": "O_EV14_P1",
+          "amount_paise": 1100000,
+          "payment_method": "CARD",
+          "captured_at": "2026-02-28",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 22000,
+          "policy_tax_paise": 3960,
+          "charged_fee_paise": 22000,
+          "charged_tax_paise": 3960
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": "SUFFIX",
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D2_NARRATION_NO_UTR",
+          "subject_type": "settlement",
+          "subject_id": "EV_14",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "NONE",
+          "planted_amount_paise": 0,
+          "is_resolvable": true,
+          "notes": "No UTR on the bank line and only a suffix in the narration. The credit is inside the tolerance window, so exact amount + date resolves it at tier A and the correct outcome is no exception at all."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": []
+      }
+    },
+    {
+      "scenario_id": "EV15",
+      "title": "Settlement posting written twice",
+      "family": "D3",
+      "note": "The whole settlement entry group was posted a second time. Both copies balance internally, so an unbalanced-group check finds nothing -- only the clearing balance for the payment gives it away.",
+      "settlement": {
+        "settlement_id": "EV_15",
+        "settlement_period_start": "2026-02-28",
+        "settlement_period_end": "2026-03-01",
+        "settlement_date": "2026-03-05",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26030500000015"
+      },
+      "payments": [
+        {
+          "payment_id": "EV15_P1",
+          "order_id": "O_EV15_P1",
+          "amount_paise": 1000000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-02",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 20000,
+          "policy_tax_paise": 3600,
+          "charged_fee_paise": 20000,
+          "charged_tax_paise": 3600
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": {
+        "kind": "DUPLICATE_SETTLEMENT_GROUP",
+        "payment_id": "EV15_P1"
+      },
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D3_DUPLICATE_LEDGER",
+          "subject_type": "payment",
+          "subject_id": "EV15_P1",
+          "expected_delta_kind": "D3_LEDGER",
+          "expected_exception_type": "DUPLICATE_LEDGER_ENTRY",
+          "planted_amount_paise": 976400,
+          "is_resolvable": true,
+          "notes": "The settlement group was posted twice; clearing no longer nets to zero."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "DUPLICATE_LEDGER_ENTRY"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV16",
+      "title": "Settlement posting missing entirely",
+      "family": "D3",
+      "note": "The capture was posted but the settlement never was, so the payment's clearing balance is still sitting at the full captured amount. The mirror image of EV15.",
+      "settlement": {
+        "settlement_id": "EV_16",
+        "settlement_period_start": "2026-03-02",
+        "settlement_period_end": "2026-03-03",
+        "settlement_date": "2026-03-06",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26030600000016"
+      },
+      "payments": [
+        {
+          "payment_id": "EV16_P1",
+          "order_id": "O_EV16_P1",
+          "amount_paise": 850000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-04",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 17000,
+          "policy_tax_paise": 3060,
+          "charged_fee_paise": 17000,
+          "charged_tax_paise": 3060
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": {
+        "kind": "DROP_SETTLEMENT_GROUP",
+        "payment_id": "EV16_P1"
+      },
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D3_MISSING_LEDGER",
+          "subject_type": "payment",
+          "subject_id": "EV16_P1",
+          "expected_delta_kind": "D3_LEDGER",
+          "expected_exception_type": "MISSING_LEDGER_ENTRY",
+          "planted_amount_paise": 850000,
+          "is_resolvable": true,
+          "notes": "No settlement posting; clearing still holds the captured amount."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "MISSING_LEDGER_ENTRY"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV17",
+      "title": "Gateway fee posted to SALES instead of GATEWAY_FEES",
+      "family": "D3",
+      "note": "The entry group still balances and the clearing account still nets to exactly zero, so every arithmetic check passes. Only an account-level integrity check finds it -- and it matters, because revenue is overstated and input GST understated.",
+      "settlement": {
+        "settlement_id": "EV_17",
+        "settlement_period_start": "2026-03-04",
+        "settlement_period_end": "2026-03-05",
+        "settlement_date": "2026-03-07",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26030700000017"
+      },
+      "payments": [
+        {
+          "payment_id": "EV17_P1",
+          "order_id": "O_EV17_P1",
+          "amount_paise": 1250000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-06",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 25000,
+          "policy_tax_paise": 4500,
+          "charged_fee_paise": 25000,
+          "charged_tax_paise": 4500
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": {
+        "kind": "MISPOST_FEE_TO_SALES",
+        "payment_id": "EV17_P1"
+      },
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D3_WRONG_ACCOUNT",
+          "subject_type": "payment",
+          "subject_id": "EV17_P1",
+          "expected_delta_kind": "D3_LEDGER",
+          "expected_exception_type": "MISPOSTED_ACCOUNT",
+          "planted_amount_paise": 25000,
+          "is_resolvable": true,
+          "notes": "25000 paise of gateway fee posted to SALES; group still balances."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": [
+          "MISPOSTED_ACCOUNT"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV18",
+      "title": "Seller paid less than the allocation says they were owed",
+      "family": "D4",
+      "note": "EV_S1 was allocated 800000 gross at 1200 bps commission, so 704000 was owed. Only 674000 was transferred. The settlement itself reconciles perfectly on D1, D2 and D3 -- a marketplace can balance to the paise at the top and still be short-paying a seller underneath, which is the entire argument for reporting D4 separately.",
+      "settlement": {
+        "settlement_id": "EV_18",
+        "settlement_period_start": "2026-03-06",
+        "settlement_period_end": "2026-03-07",
+        "settlement_date": "2026-03-10",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26031000000018"
+      },
+      "payments": [
+        {
+          "payment_id": "EV18_P1",
+          "order_id": "O_EV18_P1",
+          "amount_paise": 1200000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-08",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 24000,
+          "policy_tax_paise": 4320,
+          "charged_fee_paise": 24000,
+          "charged_tax_paise": 4320
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [
+        {
+          "seller_id": "EV_S1",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200
+        },
+        {
+          "seller_id": "EV_S2",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "EV18_A1",
+          "payment_id": "EV18_P1",
+          "seller_id": "EV_S1",
+          "gross_allocated_paise": 800000,
+          "commission_paise": 96000,
+          "net_seller_paise": 704000,
+          "allocation_status": "SETTLED"
+        },
+        {
+          "allocation_id": "EV18_A2",
+          "payment_id": "EV18_P1",
+          "seller_id": "EV_S2",
+          "gross_allocated_paise": 400000,
+          "commission_paise": 32000,
+          "net_seller_paise": 368000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "EV18_T1",
+          "payment_id": "EV18_P1",
+          "seller_id": "EV_S1",
+          "seller_amount_paise": 674000,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "EV18_T2",
+          "payment_id": "EV18_P1",
+          "seller_id": "EV_S2",
+          "seller_amount_paise": 368000,
+          "transfer_status": "PROCESSED"
+        },
+        {
+          "transfer_id": "EV18_T3",
+          "payment_id": "EV18_P1",
+          "seller_id": "EV_S1",
+          "seller_amount_paise": 30000,
+          "transfer_status": "REVERSED"
+        }
+      ],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D4_ALLOC_TRANSFER_DIVERGENCE",
+          "subject_type": "seller_allocation",
+          "subject_id": "EV18_A1",
+          "expected_delta_kind": "D4_PAYOUT",
+          "expected_exception_type": "ALLOCATION_TRANSFER_DIVERGENCE",
+          "planted_amount_paise": 30000,
+          "is_resolvable": true,
+          "notes": "30000 paise short against a SETTLED allocation."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 30000,
+        "worst_tier": "A",
+        "exception_types": [
+          "ALLOCATION_TRANSFER_DIVERGENCE"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV19",
+      "title": "Allocation marked settled with no transfer at all",
+      "family": "D4",
+      "note": "The allocation says SETTLED and 828000 is owed, but no transfer row exists. Not a rounding difference and not a timing difference -- the payout never happened.",
+      "settlement": {
+        "settlement_id": "EV_19",
+        "settlement_period_start": "2026-03-08",
+        "settlement_period_end": "2026-03-09",
+        "settlement_date": "2026-03-11",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26031100000019"
+      },
+      "payments": [
+        {
+          "payment_id": "EV19_P1",
+          "order_id": "O_EV19_P1",
+          "amount_paise": 950000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-10",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 19000,
+          "policy_tax_paise": 3420,
+          "charged_fee_paise": 19000,
+          "charged_tax_paise": 3420
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [
+        {
+          "seller_id": "EV_S1",
+          "seller_name": "Kanha Traders",
+          "seller_type": "SMB",
+          "commission_bps": 1200
+        },
+        {
+          "seller_id": "EV_S2",
+          "seller_name": "Nilgiri Organics",
+          "seller_type": "ENTERPRISE",
+          "commission_bps": 800
+        }
+      ],
+      "allocations": [
+        {
+          "allocation_id": "EV19_A1",
+          "payment_id": "EV19_P1",
+          "seller_id": "EV_S2",
+          "gross_allocated_paise": 900000,
+          "commission_paise": 72000,
+          "net_seller_paise": 828000,
+          "allocation_status": "SETTLED"
+        }
+      ],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "D4_TRANSFER_MISSING",
+          "subject_type": "seller_allocation",
+          "subject_id": "EV19_A1",
+          "expected_delta_kind": "D4_PAYOUT",
+          "expected_exception_type": "TRANSFER_MISSING",
+          "planted_amount_paise": 828000,
+          "is_resolvable": true,
+          "notes": "SETTLED allocation with no transfer record."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 828000,
+        "worst_tier": "A",
+        "exception_types": [
+          "TRANSFER_MISSING"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV20",
+      "title": "Two genuinely separate payments, identical amount, same day",
+      "family": "TRAP",
+      "note": "EV20_P1 and EV20_P2 are 450000 on CARD, captured on the same day by two different customers on two different orders. They are not duplicates. Anything that flags them is producing a false positive, and the cost of that in production is a controller chasing money that is not missing.",
+      "settlement": {
+        "settlement_id": "EV_20",
+        "settlement_period_start": "2026-03-10",
+        "settlement_period_end": "2026-03-11",
+        "settlement_date": "2026-03-13",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26031300000020"
+      },
+      "payments": [
+        {
+          "payment_id": "EV20_P1",
+          "order_id": "O_EV20_A",
+          "amount_paise": 450000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-12",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 9000,
+          "policy_tax_paise": 1620,
+          "charged_fee_paise": 9000,
+          "charged_tax_paise": 1620
+        },
+        {
+          "payment_id": "EV20_P2",
+          "order_id": "O_EV20_B",
+          "amount_paise": 450000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-12",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 9000,
+          "policy_tax_paise": 1620,
+          "charged_fee_paise": 9000,
+          "charged_tax_paise": 1620
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": null,
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "TRAP_SAME_AMOUNT_SAME_DAY",
+          "subject_type": "settlement",
+          "subject_id": "EV_20",
+          "expected_delta_kind": "D1_COMPUTE",
+          "expected_exception_type": "NONE",
+          "planted_amount_paise": 0,
+          "is_resolvable": true,
+          "notes": "Two legitimate identical payments. The engine must NOT raise anything here."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d2_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "A",
+        "exception_types": []
+      }
+    },
+    {
+      "scenario_id": "EV21",
+      "title": "Ambiguous bank match, first of an identical pair",
+      "family": "TRAP",
+      "note": "EV_21 and EV_22 settle for exactly the same net on the same day, and two unlabelled credits of that amount are in the statement. There is no evidence that assigns a credit to a settlement. The engine must leave both unresolved rather than pick one -- refusing to guess is the behaviour that makes every other match believable.",
+      "settlement": {
+        "settlement_id": "EV_21",
+        "settlement_period_start": "2026-03-12",
+        "settlement_period_end": "2026-03-13",
+        "settlement_date": "2026-03-17",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26031700000021"
+      },
+      "payments": [
+        {
+          "payment_id": "EV21_P1",
+          "order_id": "O_EV21_P1",
+          "amount_paise": 500000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-14",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 10000,
+          "policy_tax_paise": 1800,
+          "charged_fee_paise": 10000,
+          "charged_tax_paise": 1800
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": "AMBIGUOUS_HEAD",
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "TRAP_AMBIGUOUS_MATCH",
+          "subject_type": "settlement",
+          "subject_id": "EV_21",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "AMBIGUOUS_BANK_MATCH",
+          "planted_amount_paise": 0,
+          "is_resolvable": false,
+          "notes": "Two identical credits, two identical settlements, no distinguishing evidence. Must not be auto-resolved."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "C",
+        "exception_types": [
+          "AMBIGUOUS_BANK_MATCH"
+        ]
+      }
+    },
+    {
+      "scenario_id": "EV22",
+      "title": "Ambiguous bank match, second of the identical pair",
+      "family": "TRAP",
+      "note": "The partner of EV_21: same net, same settlement date, same unlabelled credit sitting in the statement. Identical in every respect an automated matcher can see, which is exactly why neither may be auto-resolved. Both must land at tier C and wait for a human with information the statement does not contain.",
+      "settlement": {
+        "settlement_id": "EV_22",
+        "settlement_period_start": "2026-03-14",
+        "settlement_period_end": "2026-03-15",
+        "settlement_date": "2026-03-18",
+        "settlement_status": "PROCESSED",
+        "settlement_utr": "N26031800000022"
+      },
+      "payments": [
+        {
+          "payment_id": "EV22_P1",
+          "order_id": "O_EV22_P1",
+          "amount_paise": 500000,
+          "payment_method": "CARD",
+          "captured_at": "2026-03-16",
+          "payment_status": "CAPTURED",
+          "policy_fee_paise": 10000,
+          "policy_tax_paise": 1800,
+          "charged_fee_paise": 10000,
+          "charged_tax_paise": 1800
+        }
+      ],
+      "refunds": [],
+      "adjustments": [],
+      "sellers": [],
+      "allocations": [],
+      "transfers": [],
+      "bank": "AMBIGUOUS_TAIL",
+      "ledger_mutation": null,
+      "header_override": null,
+      "ground_truth": [
+        {
+          "anomaly_type": "TRAP_AMBIGUOUS_MATCH",
+          "subject_type": "settlement",
+          "subject_id": "EV_22",
+          "expected_delta_kind": "D2_BANK",
+          "expected_exception_type": "AMBIGUOUS_BANK_MATCH",
+          "planted_amount_paise": 0,
+          "is_resolvable": false,
+          "notes": "The other half of the ambiguity."
+        }
+      ],
+      "expected": {
+        "d1_paise": 0,
+        "d3_paise": 0,
+        "d4_paise": 0,
+        "worst_tier": "C",
+        "exception_types": [
+          "AMBIGUOUS_BANK_MATCH"
+        ]
+      }
+    }
+  ]
+}

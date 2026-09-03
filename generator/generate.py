@@ -17,7 +17,7 @@ import random
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
-from engine.db import connect, copy_rows
+from engine.db import connect, copy_rows, fetch_one
 from engine.money import bps
 from engine.policy import Policy, load_policy
 from generator.calendar import add_working_days, is_working_day
@@ -828,6 +828,19 @@ def main() -> None:
     policy = load_policy()
     ds = build(args.seed, args.settlements, policy, args.label, with_anomalies=not args.clean)
     with connect() as conn:
+        # The dataset_id is derived from the seed, so regenerating a seed means
+        # replacing that dataset rather than adding a second one. The API has
+        # always done this; the CLI did not, so a second `make generate` on the
+        # same seed failed on the primary key instead of doing the obvious thing.
+        prior = fetch_one(conn, "SELECT label, generated_at FROM datasets WHERE dataset_id=%s",
+                          (ds.dataset_id,))
+        if prior:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM datasets WHERE dataset_id=%s", (ds.dataset_id,))
+            conn.commit()
+            print(f"replacing the existing seed-{args.seed} dataset "
+                  f"(label {prior['label']!r}, generated {prior['generated_at']:%Y-%m-%d %H:%M}) "
+                  f"-- its runs and appended cycles go with it")
         counts = persist(ds, conn)
     print(f"dataset_id = {ds.dataset_id}")
     print(f"seed       = {args.seed}   policy = {policy.version}   label = {args.label}")

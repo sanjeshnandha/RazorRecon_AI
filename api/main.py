@@ -395,6 +395,126 @@ def trace_money(run_id: str, node_type: str = Query(...), node_id: str = Query(.
     return result
 
 
+# --------------------------------------------------------------- fixtures ---
+@app.get("/api/fixtures/evaluation-batch")
+def evaluation_batch_info():
+    """What the static batch contains, without loading it."""
+    from fixtures.loader import load_batch
+    b = load_batch()
+    return {"batch_id": b["batch_id"], "dataset_id": b["dataset_id"], "title": b["title"],
+            "policy_version": b["policy_version"], "how_to_read": b["how_to_read"],
+            "scenario_count": b["scenario_count"],
+            "families": sorted({s["family"] for s in b["scenarios"]}),
+            "scenarios": [{k: s[k] for k in ("scenario_id", "title", "family", "note")}
+                          | {"settlement_id": s["settlement"]["settlement_id"],
+                             "expected": s["expected"]}
+                          for s in b["scenarios"]]}
+
+
+@app.post("/api/fixtures/evaluation-batch")
+def load_evaluation_batch():
+    """Load the static evaluation batch and reconcile it.
+
+    Fixed, hand-authored, no seed and no randomness: the same rows every time,
+    with each scenario's expected outcome stated in the file. Loading it twice
+    replaces it rather than accumulating copies, because its dataset_id is a
+    constant.
+    """
+    from fixtures.loader import load
+    with tx() as conn:
+        out = load(conn)
+        m = runner.run(conn, out["dataset_id"])
+    return {"dataset_id": out["dataset_id"], "row_counts": out["row_counts"], "run": m}
+
+
+# ------------------------------------------------------------------- data ---
+@app.get("/api/runs/{run_id}/tables")
+def tables(run_id: str):
+    """Live row counts for every table, scoped to this run and its dataset."""
+    from api import browse
+    ds = _dataset_of(run_id)
+    with tx() as conn:
+        return {"run_id": run_id, "dataset_id": ds,
+                "tables": browse.summary(conn, run_id, ds)}
+
+
+@app.get("/api/runs/{run_id}/tables/{table}")
+def table_rows(run_id: str, table: str, limit: int = 50, offset: int = 0):
+    """One page of real rows from one table. Read-only."""
+    from api import browse
+    ds = _dataset_of(run_id)
+    with tx() as conn:
+        out = browse.page(conn, run_id, ds, table, limit, offset)
+    if "error" in out:
+        raise HTTPException(404, out["error"])
+    return out
+
+
+# ------------------------------------------------------------------ agent ---
+class AskRequest(BaseModel):
+    question: str
+    use_history: bool = True
+
+
+@app.get("/api/agent/status")
+def agent_status():
+    """Whether a provider key is configured, and the suggested questions. The UI
+    calls this to decide between offering the panel and explaining what is missing."""
+    from agent.investigator import SUGGESTED_QUESTIONS
+    from agent.llm import status as llm_status
+    return {**llm_status(), "suggested_questions": SUGGESTED_QUESTIONS,
+            "scope": "read-only over persisted results; the agent cannot change any "
+                     "number, tier or status"}
+
+
+@app.post("/api/runs/{run_id}/ask")
+def ask(run_id: str, req: AskRequest):
+    """Ask the investigation agent about this run.
+
+    The agent gets bounded read-only tools over results the engine already
+    computed. It never recomputes anything, and there is no code path from here
+    to a write on any reconciliation table.
+    """
+    from agent import store
+    from agent.investigator import investigate
+    from agent.llm import LLMUnavailable
+
+    question = (req.question or "").strip()
+    if not question:
+        raise HTTPException(400, "question is required")
+    if len(question) > 2000:
+        raise HTTPException(400, "question is too long (2000 characters max)")
+    ds = _dataset_of(run_id)
+
+    with tx() as conn:
+        history = store.history_for_prompt(conn, run_id) if req.use_history else []
+        try:
+            result = investigate(conn, run_id, ds, question, history)
+        except LLMUnavailable as e:
+            # A missing or unreachable key must never look like a broken engine.
+            raise HTTPException(503, str(e))
+        turn = store.record(conn, run_id, question, result)
+    return {"turn_id": turn, "question": question, **result}
+
+
+@app.get("/api/runs/{run_id}/conversation")
+def conversation(run_id: str):
+    """The persisted transcript for this run.
+
+    Never fails the request. The agent is additive to a system that already
+    works, and this endpoint is called every time a run is selected -- so a
+    problem in the agent's own storage must degrade to an empty conversation,
+    not take a reconciliation screen down with it.
+    """
+    from agent import store
+    try:
+        with tx() as conn:
+            return {"run_id": run_id, "turns": store.conversation(conn, run_id),
+                    "storage_ready": store.table_ready(conn)}
+    except Exception:                               # noqa: BLE001 - degraded, not fatal
+        return {"run_id": run_id, "turns": [], "storage_ready": False}
+
+
 @app.get("/api/runs/{run_id}/audit")
 def audit(run_id: str, limit: int = 500, offset: int = 0):
     return _rows("SELECT * FROM audit_log WHERE run_id=%s ORDER BY audit_id LIMIT %s OFFSET %s",

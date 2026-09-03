@@ -1,0 +1,80 @@
+name: golden tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: finctl
+          POSTGRES_PASSWORD: finctl
+          POSTGRES_DB: finctl
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U finctl -d finctl"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://finctl:finctl@localhost:5432/finctl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: load schema
+        run: |
+          psql "$DATABASE_URL" -q -f db/schema.sql
+          psql "$DATABASE_URL" -q -f db/indexes.sql
+      - name: golden tests
+        run: python -m pytest tests/ -q
+      - name: phase-4 gate -- clean data must reconcile to exactly zero
+        run: |
+          python -m generator.generate --seed 7 --settlements 40 --label ci-clean --clean
+          python - <<'PY'
+          from engine.db import connect, fetch_one, fetch
+          from engine import runner
+          with connect() as conn:
+              ds = str(fetch_one(conn, "SELECT dataset_id FROM datasets WHERE label='ci-clean' "
+                                       "ORDER BY generated_at DESC LIMIT 1")["dataset_id"])
+              m = runner.run(conn, ds)
+              bad = fetch(conn, "SELECT delta_id FROM reconciliation_deltas WHERE run_id=%s "
+                                "AND delta_paise <> 0", (m["run_id"],))
+          assert bad == [], f"clean data produced non-zero deltas: {bad[:5]}"
+          assert m["tiers"]["tier_c"] == 0
+          print("clean-data gate: OK")
+          PY
+      - name: append gate -- a grown dataset must still reconcile to exactly zero
+        run: |
+          python - <<'PY'
+          from engine.db import connect, fetch_one, fetch
+          from engine import runner
+          from generator.append import tick
+          with connect() as conn:
+              ds = str(fetch_one(conn, "SELECT dataset_id FROM datasets WHERE label='ci-clean' "
+                                       "ORDER BY generated_at DESC LIMIT 1")["dataset_id"])
+              # two ticks: one append can pass where a counter that never advanced
+              # only shows up on the second
+              tick(conn, ds, settlements=8, clean=True, reconcile=False)
+              tick(conn, ds, settlements=8, clean=True, reconcile=False)
+              m = runner.run(conn, ds)
+              bad = fetch(conn, "SELECT delta_id FROM reconciliation_deltas WHERE run_id=%s "
+                                "AND delta_paise <> 0", (m["run_id"],))
+              gaps = fetch(conn, """
+                  SELECT a.settlement_id FROM settlements a JOIN settlements b
+                    ON b.dataset_id=a.dataset_id
+                   AND b.settlement_period_start > a.settlement_period_end
+                  WHERE a.dataset_id=%s
+                  GROUP BY a.settlement_id, a.settlement_period_end
+                  HAVING MIN(b.settlement_period_start) - a.settlement_period_end <> 1""", (ds,))
+              n = fetch_one(conn, "SELECT count(*) c FROM settlements WHERE dataset_id=%s", (ds,))["c"]
+          assert bad == [], f"appended clean data produced non-zero deltas: {bad[:5]}"
+          assert gaps == [], f"append broke the settlement calendar tiling: {gaps[:5]}"
+          assert n == 56, f"expected 40 + 8 + 8 settlements, got {n}"
+          assert m["tiers"]["tier_c"] == 0
+          print(f"append gate: OK -- {n} settlements across 3 batches, all deltas zero")
+          PY

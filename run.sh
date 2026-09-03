@@ -9,6 +9,12 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
 export DATABASE_URL="${DATABASE_URL:-postgresql://finctl:finctl@localhost:5433/finctl}"
 SEED="${SEED:-42}"
 SETTLEMENTS="${SETTLEMENTS:-100}"
@@ -29,7 +35,17 @@ generate()  { python3.12 -m generator.generate --seed "$SEED" --settlements "$SE
                 --label "$LABEL"; }
 gen_clean() { python3.12 -m generator.generate --seed "$SEED" --settlements "$SETTLEMENTS" \
                 --label clean --clean; }
+db_shell()  { psql "$DATABASE_URL"; }
+db_summary(){ psql "$DATABASE_URL" -c "SELECT d.label, left(d.dataset_id::text,8) AS dataset, d.seed,
+   (d.row_counts->>'settlements')::int AS settlements,
+   (d.row_counts->>'total_financial_records')::int AS records,
+   jsonb_array_length(COALESCE(d.row_counts->'batches','[]')) AS cycles,
+   (SELECT count(*) FROM reconciliation_runs r WHERE r.dataset_id=d.dataset_id) AS runs
+ FROM datasets d WHERE (d.row_counts->>'settlements')::int > 1 ORDER BY d.generated_at DESC;"; }
+agent_schema(){ psql "$DATABASE_URL" -q -f db/agent.sql
+              echo "agent_transcripts ready."; }
 reconcile() { python3.12 -m scripts.reconcile; }
+evalbatch() { python3.12 -m fixtures.loader; }
 tick()      { python3.12 -m generator.append --settlements "${TICK:-10}" \
                 ${DATASET:+--dataset "$DATASET"}; }
 tests()     { python3.12 -m pytest tests/ -q; }
@@ -46,11 +62,15 @@ case "${1:-help}" in
   generate)       generate ;;
   generate-clean) gen_clean ;;
   reconcile)      reconcile ;;
+  agent-schema)   agent_schema ;;
+  db-shell)       db_shell ;;
+  db-summary)     db_summary ;;
   tick)           tick ;;
+  evaluation-batch) evalbatch ;;
   test)           tests ;;
   web)            web ;;
   serve)          serve ;;
   demo)           demo ;;
-  *)  grep -E '^\s+(install|db-up|db-down|schema|generate|generate-clean|reconcile|tick|test|web|serve|demo)\)' "$0" \
+  *)  grep -E '^\s+(install|db-up|db-down|db-shell|db-summary|schema|agent-schema|generate|generate-clean|reconcile|tick|evaluation-batch|test|web|serve|demo)\)' "$0" \
         | sed 's/).*//' | sed 's/^/  ./run.sh /' ;;
 esac

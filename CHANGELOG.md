@@ -1,0 +1,325 @@
+# Project log
+
+Running record of what this project is, what has changed, and why. **Every change
+made from here on gets an entry.** If you are picking this up cold — a teammate,
+an evaluator, or a future session — read "Current state" first, then the newest
+log entry.
+
+Newest entries at the top.
+
+---
+
+## How to keep this file
+
+One entry per change, with four things: **what changed**, **why**, **which files**,
+and **how it was verified**. A change that is not verified is not finished, and an
+entry that does not say why will be useless in a week.
+
+If a change alters a number quoted anywhere (test count, record count, accuracy),
+update the "Current state" block too — a log that disagrees with the code is worse
+than no log.
+
+---
+
+## Current state
+
+**What it is.** A deterministic settlement reconciliation engine. It recomputes
+what a settlement *should* have paid from a versioned policy registry, compares
+that against what the report claims, what the bank actually credited, what the
+merchant's own books say, and what each seller was paid — four independent axes,
+reported separately and never blended. Plus a language-model agent that explains
+the results without being able to change them.
+
+**Stack.** Python 3.12, FastAPI, PostgreSQL 16, vanilla-JS single-file SPA.
+Six dependencies: `psycopg`, `fastapi`, `uvicorn`, `PyYAML`, `pydantic`, `pytest`.
+No ORM, no npm, no vendor AI SDK. All money is `BIGINT` paise — never floats.
+
+**Tests: 193, all passing.**
+
+| file | n | covers |
+|---|---:|---|
+| `test_evaluation_batch.py` | 56 | the static batch: every scenario's stated delta, tier and exception |
+| `test_agent.py` | 41 | agent tools, scoping, injection refusal, citation guard, storage |
+| `test_golden.py` | 30 | the 19 golden scenarios |
+| `test_append.py` | 19 | append mode: tiling, id sequences, late refunds, clean-append zero |
+| `test_browse.py` | 14 | the Data tab: catalogue registry, injection, scoping, paging |
+| `test_phase0_fixtures.py` | 12 | the 10 hand-worked M01–M10 fixtures |
+| `test_calculation.py` | 9 | calculation properties |
+| `test_invariants.py` | 7 | structural vs business invariants |
+| `test_money.py` | 5 | integer paise primitives |
+
+**Local environment (this machine).** Postgres on **port 5433** (5432 was taken),
+interpreter **python3.12**. `Makefile` uses `PYTHON ?= python3.12`; override with
+`make <target> PYTHON=python3` elsewhere.
+
+**Two files must be created by hand** — the Claude file bridge refuses to write
+them because both execute code:
+
+```bash
+mv Makefile.txt Makefile
+mkdir -p .github/workflows && cp ci/github-workflow-ci.yml .github/workflows/ci.yml
+```
+
+Until the second one exists, **CI does not run on pushes** — GitHub only looks in
+`.github/workflows/`.
+
+**Commands.**
+
+```bash
+make db-up && make schema && make generate   # first-time setup
+make serve                                   # http://localhost:8000
+make tick                                    # +10 settlements, re-reconcile
+make evaluation-batch                        # load the fixed 22-scenario batch
+make agent-schema                            # add the agent table to a LIVE db
+make db-summary / make db-shell              # inspect the database
+make test                                    # 193 tests
+```
+
+**Layout.**
+
+```
+engine/       13 modules — the deterministic reconciliation engine (unchanged this session)
+generator/    seeded dataset generation + append mode (origin.py, append.py are new)
+fixtures/     the static evaluation batch: authoring.py, loader.py, evaluation_batch.json
+agent/        the investigation agent: llm.py, tools.py, investigator.py, store.py
+api/          FastAPI app + browse.py (Data tab) + the single-file SPA in static/
+db/           schema.sql (destructive), indexes.sql, agent.sql (idempotent)
+tests/        193 tests
+```
+
+**UI tabs.** Dashboard · Settlements · Settlement detail · Exceptions · Seller
+payouts · Trace money · **Data** · **Ask the agent**
+
+**Header buttons.** Generate dataset · Simulate next cycle · Evaluation batch ·
+Run reconciliation
+
+---
+
+## 2026-09-02 — Static evaluation batch
+
+**What.** A fixed, hand-authored batch of **22 settlements / 301 financial
+records** with every expected outcome written down beside the data. Constant
+`dataset_id`, so loading twice replaces rather than accumulates. Reachable from
+the **Evaluation batch** header button, `POST /api/fixtures/evaluation-batch`, or
+`make evaluation-batch`.
+
+**Why.** The seeded generator is reproducible but large. An evaluator needs
+something small enough to read end to end, and a fixed point to compare engine
+versions against. No seed, no sampling, no clock.
+
+**Coverage.** 3 clean controls · 5 Δ₁ · 5 Δ₂ · 3 Δ₃ · 2 Δ₄ · **4 false-positive
+traps**. Includes the cases specifically asked for: a retried order with two
+FAILED attempts, refunds, an unitemised chargeback, a duplicated ledger posting,
+and two genuinely identical same-day payments that must **not** be flagged.
+
+**Score against it: 100% detection, 100% diagnosis, 100% correct escalation,
+3/3 traps avoided, 0 false auto-resolutions.**
+
+**Four things the first draft got wrong** — each worth remembering:
+
+1. `refund_outside_period` is a **trap**, not a defect. A refund dated after one
+   period closes belongs to the *next* settlement, where it is correctly itemised.
+   The right engine behaviour is silence on both.
+2. `ALLOCATION_TRANSFER_DIVERGENCE` only resolves when a REVERSED transfer of
+   exactly the missing amount exists. Without that evidence the engine is right to
+   call it an unexplained `PHANTOM_PAYOUT_GAP` and refuse to resolve.
+3. A bulk credit covering two settlements only resolves when their settlement
+   dates fall inside `POLICY.MATCH.date_window_days` (3). Mine were 4 apart.
+4. A trap is `is_resolvable=True` with `expected_exception_type="NONE"`.
+   `is_resolvable=False` means something different — "undiagnosable, must escalate
+   to tier C" — and confusing the two makes the honesty score measure the wrong
+   thing.
+
+**Files.** New: `fixtures/{__init__,authoring,loader}.py`,
+`fixtures/evaluation_batch.json`, `tests/test_evaluation_batch.py`. Changed:
+`api/main.py`, `web/index.html`, `api/static/index.html`, `run.sh`,
+`Makefile.txt`, `README.md`.
+
+**Verified.** 22/22 scenarios match their stated deltas, tiers and exception
+types against a real run. 56 new tests; 193 total passing. A test pins the batch
+to the policy's `config_hash`, so changing `policy.yaml` fails loudly rather than
+letting the two silently disagree.
+
+---
+
+## 2026-09-02 — Data tab
+
+**What.** A read-only browser over all 22 tables, scoped to the selected run,
+with live row counts. Grouped into *Generated data* (the book the engine reads)
+and *Engine results* (what it concluded). Money shows as rupees with a **raw
+paise** toggle. Also `./run.sh db-summary` and `./run.sh db-shell`.
+
+**Why.** Asked twice how to see the data as it is created. Counts update the
+moment you hit Simulate — verified 21 → 31 settlements without a manual refresh.
+
+**Safety.** The table registry is derived from PostgreSQL's own catalogue, not a
+hand-written list, so it cannot drift when the schema changes. A table name is
+checked against that registry before reaching any SQL string —
+`settlements; DROP TABLE payments` returns "unknown table". Page sizes clamped
+server-side. `api/browse.py` contains only `SELECT`s, asserted by a test that
+greps the module source.
+
+**Files.** New: `api/browse.py`, `tests/test_browse.py`. Changed: `api/main.py`,
+`web/index.html`, `api/static/index.html`, `README.md`.
+
+**Verified.** 14 new tests; 137 total at the time. Rendered in Chromium, no
+console errors.
+
+---
+
+## 2026-09-02 — Fixed: `agent_transcripts` missing on existing installs
+
+**What.** `GET /api/runs/{id}/conversation` returned **500** on any database that
+predated the agent. New idempotent migration `db/agent.sql`; `agent/store.py`
+applies it on demand; the endpoint degrades to an empty conversation instead of
+failing. New `make agent-schema`.
+
+**Why — this was my bug, in two parts.** The table existed only in `schema.sql`,
+which begins with `DROP TABLE` on everything — so the obvious fix would have
+destroyed the dataset and every run. And the SPA calls that endpoint on every run
+selection, so a problem in the agent's own storage was throwing errors into a
+reconciliation screen. An additive feature must never be able to do either.
+
+**Files.** New: `db/agent.sql`. Changed: `agent/store.py`, `api/main.py`,
+`db/schema.sql`, `tests/test_agent.py`, `run.sh`, `Makefile.txt`.
+
+**Verified.** Dropped the table with 5 runs present, restarted, hit the endpoint:
+200, table created, 5 runs intact, zero tracebacks. 4 new tests.
+
+---
+
+## 2026-09-02 — Fixed: `make generate` crashed on a repeated seed
+
+**What.** Regenerating an existing seed from the CLI failed with a primary-key
+violation. Now it replaces the dataset and says what it is replacing.
+
+**Why.** `dataset_id` is derived from the seed. The API's Generate button always
+deleted first; `main()` in the generator never did. Pre-existing bug, not from
+this session's work — but it fires on the most ordinary action there is.
+
+**Files.** `generator/generate.py`. Also added `db-shell` / `db-summary` targets.
+
+---
+
+## 2026-09-01 — Investigation agent
+
+**What.** A language model with **12 bounded read-only tools** over one finished
+run, answering questions in English. New **Ask the agent** tab, `POST
+/api/runs/{id}/ask`, transcripts persisted to `agent_transcripts`.
+
+**Why.** The hackathon track is called *AI Finance Controller* and its brief opens
+"Build an agent" — the project had zero LLM calls. The track's own example
+directions list "Settlement Q&A agent" second.
+
+**The design decision that matters.** The engine still computes everything
+deterministically; the agent only reads persisted results. It cannot change a
+number, a tier, or a status, because `agent/tools.py` contains only `SELECT`s —
+asserted by a test, not assumed. The pitch is stronger for it: *the numbers are
+proved, not generated, and the agent explains them.*
+
+**Provider.** Gemini or Grok, through one adapter over the OpenAI-compatible
+chat-completions format, written against the standard library. **No new
+dependencies.** Set `GEMINI_API_KEY` or `XAI_API_KEY`; with neither, the panel
+explains what is missing and every other screen is unaffected.
+
+**Two guardrails.** The tool-call budget is bounded, so a confused model stops
+rather than walking the dataset. And every record id in an answer is checked
+against ids that actually appeared in tool results — anything else renders as a
+red **Unverified reference**. That is the failure mode that matters with a model
+near financial data: not a wrong tone, but a confident sentence naming a record it
+never read.
+
+**Two problems found while building.** `get_settlement` returned 47 Δ₄ rows that
+were all zero, burying the actual residue — now summarised. And the citation guard
+produced a false positive when `get_evidence` returned nothing for a real
+settlement, so tools now confirm the subject exists and echo it back.
+
+**Files.** New: `agent/{__init__,llm,tools,investigator,store}.py`,
+`tests/test_agent.py`. Changed: `api/main.py`, `web/index.html`,
+`api/static/index.html`, `db/schema.sql`, `.env.example`, `README.md`.
+
+**Verified.** 37 new tests, all passing with **no API key and no network** — the
+model is stubbed, because the agent is untested exactly where it matters
+otherwise. Covers scoping across two runs sharing settlement ids, limit clamping,
+unknown-tool refusal, malformed arguments, budget exhaustion, and the citation
+guard catching a fabricated id.
+
+---
+
+## 2026-09-01 — Append mode ("Simulate next cycle")
+
+**What.** The dataset grows. `make tick`, `POST /api/datasets/{id}/tick`, and a
+**Simulate next cycle** button append a new settlement cycle to the *same* dataset
+and re-reconcile everything into a new immutable run.
+
+**Why.** The system only handled a fixed snapshot. In reality payments keep
+arriving, refunds turn up weeks later, and the bank credits yesterday's settlement
+tomorrow.
+
+**What continues across a tick.** The calendar (resuming the day after the last
+period ended, so periods still tile with no gaps); every id sequence (re-derived
+from the data's own high-water mark, not a stored counter); the seller population;
+and ground truth, so detection rate is scored over the whole grown dataset.
+
+**Two things that make a tick worth watching.** Refunds arrive **late** — against
+payments settled cycles ago, netted off the current settlement. That is the Δ₂
+timing case the engine always handled but never saw. They post `DR REFUNDS / CR
+BANK` and deliberately never touch `RAZORPAY_CLEARING`, because that payment's
+clearing balance was closed by its own settlement and crediting it again would
+manufacture a Δ₃ imbalance on a settlement nobody touched. And the last
+settlement of a cycle has **no bank credit yet** — it reports as an open Δ₂
+exception and the *next* tick closes it. An exception that heals itself is the
+clearest proof that a run is a picture of a moment, not a permanent verdict.
+
+**Scaling.** Linear: 500 settlements / 146k records reconcile in 3.11s. Appending
+costs ~0.35s per cycle, 0.24s of which is re-deriving id high-water marks from the
+data — the safe choice over trusting a counter.
+
+**Also fixed a latent bug** in the existing generator: a settlement whose refunds
+swallow the net was emitting a negative `credit_paise`, violating a DDL check. It
+never fired at 100 settlements but does on smaller batches.
+
+**Files.** New: `generator/origin.py`, `generator/append.py`,
+`tests/test_append.py`. Changed: `generator/generate.py`, `generator/anomalies.py`,
+`api/main.py`, `web/index.html`, `run.sh`, `Makefile.txt`, `ci/…`,
+`tests/test_invariants.py`, `README.md`.
+
+**Verified.** 19 new tests. Across 130 settlements and four batches: calendar
+tiling closed at every seam, zero duplicate ids on all 11 sequences, refund
+headroom intact, all entry groups balanced, 101/101 detection with 100% diagnosis
+and zero false auto-resolutions. CI gained a gate: two clean ticks must still
+reconcile to exactly zero — twice, because one append can pass on a counter that
+never advanced.
+
+---
+
+## Decisions and open items
+
+**Deferred — forward cash forecaster.** Discussed and deliberately postponed. It
+would derive a day-by-day cash curve from the working-day calendar and policy the
+project already has: when each settlement lands, what is owed out to sellers
+(169 PENDING allocations ≈ ₹26.8 L in one run), and what rolling reserve is held.
+It would also upgrade Δ₂ from "missing" to **"due Thursday" vs "overdue by three
+days"**, which is the distinction a controller actually cares about. This is the
+strongest remaining addition — it completes the track's own subtitle, *"Run the
+books and the cash position"*.
+
+**Not planned — tax-line matcher.** The other track example. It would reconcile
+GST input credit across three sources: what the settlement charged per line, what
+`INPUT_GST` holds, and what the gateway's GSTR-2B tax invoice claims. The third
+source does not exist in the generator, so it would mean inventing a data source
+before the feature means anything — and Δ₁ already proves most of the arithmetic.
+
+**Supabase.** Considered and declined. Nothing in the project needs it; local
+Postgres keeps the benchmark honest and removes a demo-day network dependency.
+If judges ever need a live URL it is a small port (~20 lines: a connection pool
+and `prepare_threshold=None` for the transaction pooler).
+
+**Standing invariants — do not break these.**
+
+- Money is integer paise everywhere. No floats, no `Decimal` in the money path.
+- The four deltas are reported separately and never blended into one number.
+- Runs are immutable. A re-run mints a new `run_id`; nothing is ever mutated.
+- The agent reads. It never computes and never writes.
+- Clean data must reconcile to **exactly zero** — CI gates on it, before and
+  after appending.

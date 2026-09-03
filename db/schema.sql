@@ -9,7 +9,7 @@
 --   * derived rows carry run_id; runs are immutable.
 -- =============================================================================
 
-DROP TABLE IF EXISTS audit_log, exceptions, match_candidates, attributions,
+DROP TABLE IF EXISTS agent_transcripts, audit_log, exceptions, match_candidates, attributions,
     reconciliation_deltas, reconciliation_runs, money_edges,
     ground_truth_anomalies, ledger_entries, bank_transactions, settlement_items,
     settlements, adjustments, transfers, seller_allocations, refunds, payments,
@@ -369,3 +369,35 @@ CREATE TABLE audit_log (
     tier         CHAR(1),
     PRIMARY KEY (run_id, audit_id)
 );
+
+
+-- ---------------------------------------------------------------------------
+-- Agent transcripts. The investigation agent explains results; it never writes
+-- to any table above. This is its own record: what was asked, what it answered,
+-- which tools it called and whether every id it cited actually appeared in the
+-- evidence it read. Kept beside the engine's audit_log so a reviewer can hold
+-- the deterministic decision trail and the narrated one side by side.
+--
+-- Mirrored in db/agent.sql, which is idempotent and safe to apply to a LIVE
+-- database. Use that one to add the agent to an existing install -- reloading
+-- this file would drop every table and take the dataset with it.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS agent_transcripts (
+    run_id                 UUID        NOT NULL REFERENCES reconciliation_runs(run_id)
+                                       ON DELETE CASCADE,
+    turn_id                BIGINT      NOT NULL,
+    asked_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    question               TEXT        NOT NULL,
+    answer                 TEXT        NOT NULL,
+    provider               TEXT,
+    model                  TEXT,
+    tool_calls             JSONB       NOT NULL DEFAULT '[]',
+    tool_call_count        INT         NOT NULL DEFAULT 0,
+    citations              TEXT[]      NOT NULL DEFAULT '{}',
+    unsupported_references TEXT[]      NOT NULL DEFAULT '{}',
+    grounded               BOOLEAN     NOT NULL DEFAULT TRUE,
+    stop_reason            TEXT,
+    elapsed_seconds        NUMERIC(8,2),
+    PRIMARY KEY (run_id, turn_id)
+);
+CREATE INDEX IF NOT EXISTS agent_transcript_run_idx ON agent_transcripts (run_id, turn_id);

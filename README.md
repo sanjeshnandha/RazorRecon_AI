@@ -21,6 +21,9 @@ generation — so there is nothing here for a model to be confidently wrong abou
 
 ---
 
+> **Change history and full context:** [`CHANGELOG.md`](CHANGELOG.md) — what was
+> built, why, and what is deliberately deferred. Updated with every change.
+
 ## Run it
 
 ```bash
@@ -45,7 +48,8 @@ Individual steps:
 | `make generate-clean` | same generator, **no** anomalies — the phase-4 gate |
 | `make reconcile` | runs the engine, prints the report |
 | `make tick` | appends the next settlement cycle, then re-reconciles |
-| `make test` | 82 tests, including the 19 golden scenarios |
+| `make evaluation-batch` | loads the fixed, hand-authored evaluation batch |
+| `make test` | 193 tests, including the 19 golden scenarios |
 | `make serve` | FastAPI + the SPA, one process |
 
 Every target also exists as `./run.sh <target>`. If `Makefile` did not survive
@@ -430,6 +434,16 @@ GET  /api/runs/{id}/sellers                         per-seller payout reconcilia
 GET  /api/runs/{id}/trace?node_type=&node_id=       Trace Money (recursive CTE)
 GET  /api/runs/{id}/audit                           every engine decision
 GET  /api/runs/{id}/export.csv | export.json        downloadable report
+
+GET  /api/fixtures/evaluation-batch                 what the static batch contains
+POST /api/fixtures/evaluation-batch                 load it and reconcile it
+
+GET  /api/runs/{id}/tables                          live row counts, every table
+GET  /api/runs/{id}/tables/{table}                  one page of real rows
+
+GET  /api/agent/status                              is a provider key configured
+POST /api/runs/{id}/ask                             ask the investigation agent
+GET  /api/runs/{id}/conversation                    the persisted transcript
 ```
 
 Money crosses the API as integer paise. The only place a rupee string appears is
@@ -530,6 +544,140 @@ trusting a stored counter, and the one part that grows with dataset size.
 `make tick TICK=8` with `--clean` appends data with nothing wrong in it, which
 must still reconcile to **exactly zero**. CI runs precisely that, twice in a row,
 because a single append can pass on a counter that never advanced.
+
+---
+
+## The evaluation batch
+
+`make evaluation-batch`, or the **Evaluation batch** button in the header.
+
+The seeded generator is reproducible but large. This is the other thing: a
+**fixed, hand-authored batch of 22 settlements and 301 financial records**, small
+enough to read end to end, with every expected outcome written down in
+`fixtures/evaluation_batch.json` beside the data that produces it. No seed, no
+sampling, no clock — the same rows every time, under a constant `dataset_id`, so
+loading it twice replaces it rather than piling up copies.
+
+It exists so an evaluator can check the engine without trusting the generator,
+and so a change to the engine can be compared against a fixed point.
+
+| family | scenarios | what they cover |
+|---|---:|---|
+| clean | 3 | three payment methods; a retried order with two FAILED attempts; a refund correctly deducted |
+| Δ₁ compute | 5 | fee charged at 250 bps against a policy of 200; GST taken on the aggregate instead of per item; a processed refund never deducted; header gross below the sum of its items; a chargeback that hit the header but was never itemised |
+| Δ₂ bank | 5 | no credit at all; one settlement paid as two unlabelled credits; two settlements paid by one bulk credit; narration carrying only the UTR suffix |
+| Δ₃ ledger | 3 | the settlement group posted twice; posted not at all; the gateway fee posted to SALES |
+| Δ₄ payout | 2 | a seller short-paid with a REVERSED transfer accounting for the gap; a SETTLED allocation with no transfer at all |
+| traps | 4 | a refund after period close that belongs to the *next* settlement; two genuinely identical payments on the same day; two settlements and two credits that nothing distinguishes |
+
+The traps matter as much as the defects. A batch containing only broken things
+cannot tell a thorough engine from a trigger-happy one, and in production a false
+positive means a controller chasing money that was never missing.
+
+Against this batch the engine scores **100% detection, 100% diagnosis, 100%
+correct escalation, 3/3 traps avoided and zero false auto-resolutions** — and
+`tests/test_evaluation_batch.py` asserts every one of those numbers, plus each
+scenario's stated delta, tier and exception type, one test per scenario. The file
+cannot quietly drift into describing something the engine no longer does.
+
+The batch is authored by `fixtures/authoring.py`, which contains no randomness
+and derives every fee and tax from `policy.yaml` through the same `bps()` the
+engine uses. Change the policy and a test fails on the config hash, telling you
+to re-author rather than letting the two silently disagree.
+
+---
+
+## Seeing the data
+
+The **Data** tab is a read-only browser over every table in the schema, scoped to
+the run you are looking at. Row counts are live, so it is where you confirm that
+a Generate or a Simulate actually landed — hit **Simulate next cycle** with the
+tab open and the counts move without a refresh.
+
+Tables are split into two groups, because they are two different things: the
+**generated data** is the book the engine reads, and the **engine results** —
+deltas, attributions, match candidates, exceptions, the audit log — are what it
+concluded, every row tagged with a `run_id`.
+
+The registry comes from PostgreSQL's own catalogue rather than a hand-written
+list, so adding a table to `schema.sql` surfaces it with no code change. A table
+name is the one value that cannot be parameterised, so it is checked against that
+registry before it reaches any SQL string; page sizes are clamped server-side.
+`api/browse.py` contains only `SELECT`s, and a test asserts it.
+
+From the terminal instead:
+
+```bash
+./run.sh db-summary     # every dataset: settlements, records, cycles, runs
+./run.sh db-shell       # psql, for anything else
+```
+
+Every money column is `BIGINT` paise. The tab formats them as rupees, with a
+**raw paise** toggle for when you want the stored integer.
+
+---
+
+## The investigation agent
+
+The engine proves the numbers. The agent explains them. Those are different
+jobs, and keeping them apart is what makes either one worth having.
+
+```bash
+export GEMINI_API_KEY=...      # or XAI_API_KEY for Grok
+make serve                     # the "Ask the agent" tab
+```
+
+Ask it *"what is the single largest unexplained amount, and why could the engine
+not resolve it?"* and it calls tools, reads the persisted evidence, and answers
+with the settlement id, the delta id, the rupee figure and the rule that applied.
+
+**It cannot change anything.** `agent/tools.py` contains twelve functions and
+only `SELECT` statements — a test asserts that, rather than trusting it. Every
+query is scoped to the one run the session was opened on and parameterised here,
+so no SQL the model wrote ever reaches the database; the model picks a tool name
+and a few typed arguments, nothing more. Row limits are clamped in the tool, not
+taken on trust from the arguments.
+
+The tools it has:
+
+| tool | what it reads |
+|---|---|
+| `run_overview` | the run's four match rates, tiers, throughput, ground-truth scoring |
+| `list_settlements` | settlements ranked by unexplained residual |
+| `get_settlement` | header, the settlement-level deltas, a Δ₄ summary |
+| `get_evidence` | the attribution ledger — every explained rupee and the rule that authorised it |
+| `list_exceptions` | open items by status, severity, delta |
+| `get_matcher_trail` | every bank-matching pass tried, and why each failed |
+| `get_payments` | payment lines with the fee and tax actually charged |
+| `get_ledger` | double-entry postings and any non-zero clearing balance |
+| `get_seller_payouts` | Δ₄ per allocation |
+| `trace_money` | the lineage graph, up and down |
+| `get_policy` | the policy registry the engine computed against |
+| `get_audit` | the engine's own decision log |
+
+**Two guardrails run after every answer.** The tool-call budget is bounded, so a
+confused model stops rather than walking the dataset. And every record id the
+answer mentions is checked against the ids that actually appeared in tool
+results — anything else is reported in the UI as an *unverified reference*
+rather than quietly shipped. That is the failure mode that matters with a
+language model near financial data: not a wrong tone, but a confident sentence
+naming a record it never read.
+
+Every answer is persisted to `agent_transcripts` beside the engine's own
+`audit_log`, with the tools it called and whether its citations held up. A
+reviewer can hold the deterministic decision trail and the narrated one side by
+side.
+
+Both providers are reached through one adapter over the OpenAI-compatible
+chat-completions format, written against the standard library — the project
+still has six dependencies and no vendor SDK. With no key configured the panel
+explains what is missing and every other screen is unaffected; the agent is
+strictly additive to a system that already works without it.
+
+The agent is tested against a stubbed model, so all of this is covered in CI with
+no API key and no network: scoping across two runs that share settlement ids,
+limit clamping, refusal of unknown tools, malformed arguments, budget
+exhaustion, and the citation guard catching a fabricated record id.
 
 ---
 
