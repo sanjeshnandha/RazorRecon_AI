@@ -90,8 +90,99 @@ tests/        193 tests
 **UI tabs.** Dashboard · Settlements · Settlement detail · Exceptions · Seller
 payouts · Trace money · **Data** · **Ask the agent**
 
+**UI copy policy.** Screens state what they are and show numbers — no
+explanatory paragraphs, no commentary columns, no metric labels written as
+sentences. The one deliberate exception is the `Demo policy` chip in the header:
+these are not Razorpay's real terms, so that notice stays.
+
 **Header buttons.** Generate dataset · Simulate next cycle · Evaluation batch ·
 Run reconciliation
+
+---
+
+## 2026-09-03 — Fixed: Generate left the UI on a deleted run (regression I caused)
+
+**The bug.** Clicking **Generate dataset** created the dataset but never
+reconciled and never changed the selected run. Because `dataset_id` is derived
+from the seed, generating *replaces* that seed's dataset — and datasets cascade,
+so every run against it is deleted with it. The UI stayed pointed at a `run_id`
+that no longer existed, and every following call (`metrics`, `conversation`,
+`ask`, `tables`) returned **404**.
+
+**How I made it worse.** Sanjesh had already fixed this by hand. The fix was in
+`api/static/index.html` — which is **generated** by `web/build.sh` from
+`web/index.html`. My UI cleanup edited the source and rebuilt, silently
+overwriting his change. Worse, it was doomed anyway: `run.sh serve` builds before
+starting, so the next restart would have destroyed it regardless.
+
+**The fix, in two parts.**
+
+1. The auto-reconcile now lives in `web/index.html`, the source, so it survives
+   every build. Generate now reconciles and moves the UI onto the new run — the
+   same thing the tick and evaluation-batch buttons already did. Merged into one
+   toast and refreshes the Data tab counts, for consistency with those two.
+2. `web/build.sh` **refuses to overwrite a generated file that has diverged from
+   its source**, printing the diff and how to proceed (`FORCE=1` to discard).
+   Loud beats silent: this failure mode is now impossible to repeat without
+   someone reading exactly what is about to be lost.
+
+**Files.** `web/index.html`, `web/build.sh`, `api/static/index.html`. No engine,
+API, generator, agent or fixture change.
+
+**Verified.** Clicked Generate in Chromium and walked every tab: the run
+transitions from the old one to the new, **zero HTTP 4xx**, no console errors.
+The build guard was proven against the exact failure — it refuses, shows the
+diff, and `FORCE=1` still works. 193 tests passing.
+
+---
+
+## 2026-09-03 — UI cleanup
+
+**What.** Removed the explanatory prose from the interface. Every screen now
+states what it is and shows the numbers; nothing argues its own case.
+
+**Why.** The UI read like documentation — full-width disclaimer banner, a
+paragraph under the waterfall, commentary columns in the ground-truth table,
+"did the money actually arrive" as a metric label. Fine in a README, wrong in a
+finance tool someone uses.
+
+**What went.**
+
+- header tagline "deterministic settlement reconciliation · P0"
+- the full-width **Demo Merchant Policy** banner → now a small `Demo policy`
+  chip in the header, full statement on hover
+- the "demo policy" labels repeated under four waterfall bars, and the three
+  inline policy badges in the settlements, detail and seller tables
+- the waterfall footnote, the throughput headline sentence, the five commentary
+  notes in the ground-truth table
+- the Data tab and Ask-the-agent intro paragraphs (the suggested-question chips
+  stay — they are usable, not explanatory)
+- editorialising card subtitles: "worst unexplained residual in this batch",
+  "a settlement can reconcile perfectly while a seller is still short",
+  "one recursive walk over the lineage table", "what we planted"
+
+**What was tightened rather than removed.** Metric labels are now nouns:
+"did the money actually arrive" → "Settlement vs bank credit"; "do the merchant's
+books agree" → "Double-entry integrity". The hero line is `Across N open
+exceptions`. Empty states are one short sentence each.
+
+**One judgment call.** The policy disclaimer was **kept**, in reduced form. These
+are not Razorpay's real commercial terms and the screen is full of rates — that
+notice is an honesty safeguard, not decoration. It is now a header chip with the
+full text on hover rather than a banner across every page. Say the word if you
+want it gone entirely.
+
+**Also fixed.** `recommended_action` is engine prose sitting in a dense figures
+table; it was running off the right edge. Now a single truncated line with the
+full text on hover, so every row is a uniform 58px and the column edge is
+straight. The full text is still in the settlement detail view.
+
+**Files.** `web/index.html`, `api/static/index.html`. **Nothing else touched** —
+no engine, API, generator, agent or fixture change.
+
+**Verified.** Every tab rendered in Chromium with no console errors; longest line
+of copy on the dashboard went from 222 characters to 43. 193 tests still passing.
+The SPA is 2.9 KB smaller.
 
 ---
 
@@ -323,3 +414,10 @@ and `prepare_threshold=None` for the transaction pooler).
 - The agent reads. It never computes and never writes.
 - Clean data must reconcile to **exactly zero** — CI gates on it, before and
   after appending.
+- **`api/static/index.html` is generated.** Never edit it; edit `web/index.html`
+  and rebuild. `web/build.sh` now refuses to clobber a diverged copy, but check
+  for local edits before rebuilding regardless — a fix living only in the
+  generated file is already lost.
+- Any action that **replaces a dataset must move the UI onto a new run.**
+  Datasets cascade; leaving the UI on a deleted `run_id` 404s every subsequent
+  call. Generate, tick and evaluation-batch all do this now.

@@ -90,7 +90,6 @@ header.top{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px so
 .brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:-.01em}
 .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(140deg,var(--em-500),var(--em-700));
   display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700}
-.brand small{display:block;font-weight:400;color:var(--ink-3);font-size:11px;letter-spacing:0}
 .spacer{flex:1}
 select,input[type=text],input[type=search]{border:1px solid var(--line);border-radius:8px;padding:7px 10px;
   background:#fff;color:var(--ink);font:inherit;outline:none}
@@ -109,9 +108,14 @@ nav.tabs button:hover{color:var(--ink)}
 nav.tabs button.on{color:var(--em-700);border-bottom-color:var(--em-600)}
 
 /* the disclaimer is not decoration -- it is on every screen, always */
-.disclaimer{background:var(--em-50);border-bottom:1px solid var(--em-100);color:var(--em-900);
-  padding:7px 24px;font-size:12px;display:flex;align-items:center;gap:8px}
-.disclaimer b{font-weight:650}
+/* Recommended action is engine prose in a dense figures table. One truncated
+   line keeps every row the same height and the column edge straight; the full
+   text is on the cell's title attribute, and in the settlement detail view. */
+.clamp{color:var(--ink-2);font-size:12.5px;max-width:380px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.policy-chip{font-size:11px;color:var(--ink-3);border:1px solid var(--line);border-radius:6px;
+  padding:3px 8px;cursor:default;white-space:nowrap}
+.policy-chip:hover{border-color:var(--em-300);color:var(--em-700)}
 main{padding:24px;max-width:1500px;margin:0 auto}
 
 /* ---------- cards ---------- */
@@ -221,9 +225,9 @@ pre{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;paddin
 <header class="top">
   <div class="bar">
     <div class="brand"><div class="mark">₹</div>
-      <div>AI Finance Controller
-        <small>deterministic settlement reconciliation &middot; P0</small></div></div>
+      <div>AI Finance Controller</div></div>
     <div class="spacer"></div>
+    <span class="policy-chip" title="Demo Merchant Policy — not Razorpay's actual terms. Every fee, tax, settlement-cycle and bank-lag figure on this screen comes from a synthetic policy file authored for this project.">Demo policy</span>
     <label style="font-size:12px;color:var(--ink-3)">Run</label>
     <select id="runsel" style="min-width:300px"></select>
     <button class="btn" id="btn-generate">Generate dataset</button>
@@ -232,11 +236,6 @@ pre{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;paddin
     <button class="btn primary" id="btn-run">Run reconciliation</button>
   </div>
   <nav class="tabs" id="tabs"></nav>
-  <div class="disclaimer">
-    <b>Demo Merchant Policy</b>
-    <span>&mdash; not Razorpay's actual terms. Every fee, tax, settlement-cycle and bank-lag figure
-    on this screen comes from a synthetic policy file authored for this project.</span>
-  </div>
 </header>
 <main id="app"><div class="empty"><span class="spin"></span> loading…</div></main>
 <script>
@@ -386,10 +385,6 @@ function waterfall(steps, height=270){
     }
     const t=mk("text",{x:cx,y:ly,"text-anchor":"middle","font-size":10.5,fill:"#64748b"});
     t.textContent=line; svg.appendChild(t);
-    if(b.policy_derived){
-      const p=mk("text",{x:cx,y:ly+12,"text-anchor":"middle","font-size":9,fill:"#10b981"});
-      p.textContent="demo policy"; svg.appendChild(p);
-    }
   });
   return svg;
 }
@@ -411,37 +406,31 @@ function viewDashboard(){
       el("div",{class:"hero"},
         el("div",{class:"label"},"Amount at risk, right now"),
         el("div",{class:"big risk"}, rupees(a.amount_at_risk_paise)),
-        el("div",{class:"note"},
-          `Sum of every rupee this run could not explain, across ${m.exceptions.open} open `+
-          `exceptions. Not "N problems" — the figure a CFO actually asks for.`),
+        el("div",{class:"note"}, `Across ${m.exceptions.open} open exceptions`),
         el("div",{style:"margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"},
           el("span",{class:"chip a"}, `${g.false_auto_resolution_count} false auto-resolutions`),
           el("span",{class:"chip a"}, `${g.unresolvable_correctly_escalated}/${g.unresolvable_planted} undiagnosable cases escalated`),
           el("span",{class:"chip a"}, `${g.false_positive_traps_avoided}/${g.false_positive_traps} traps avoided`))),
       el("div",{class:"grid",style:"grid-template-columns:repeat(3,1fr);align-content:start"},
         statCard("Settlement match rate", pct(a.record_match_rate_pct),
-          `${a.settlements_fully_resolved} of ${t.settlements} settlements clean on all four deltas`,
+          `${a.settlements_fully_resolved} of ${t.settlements} settlements clean`,
           "good", a.record_match_rate_pct),
         statCard("Monetary reconciliation", pct(a.monetary_reconciliation_rate_pct),
           `${compact(a.total_settled_value_paise)} settled value examined`, "good",
           a.monetary_reconciliation_rate_pct),
         statCard("Seller payout reconciliation", pct(a.seller_payout_reconciliation_rate_pct),
-          "reported on its own axis — Δ1–Δ3 can be perfect while a seller is short", "good",
+          "Per allocation", "good",
           a.seller_payout_reconciliation_rate_pct),
-        statCard("Δ1 compute", pct(a.d1_match_rate_pct), "policy-derived fee, tax, refunds"),
-        statCard("Δ2 bank", pct(a.d2_match_rate_pct), "did the money actually arrive"),
-        statCard("Δ3 ledger", pct(a.d3_match_rate_pct), "do the merchant's books agree"))),
+        statCard("Δ1 compute", pct(a.d1_match_rate_pct), "Fee, tax and refunds vs policy"),
+        statCard("Δ2 bank", pct(a.d2_match_rate_pct), "Settlement vs bank credit"),
+        statCard("Δ3 ledger", pct(a.d3_match_rate_pct), "Double-entry integrity"))),
 
     worst && el("div",{class:"card"},
       el("h3",{}, "Financial waterfall — ", el("span",{class:"mono"},worst.settlement_id),
-        el("span",{class:"sub"}," worst unexplained residual in this batch"),
+        el("span",{class:"sub"}," highest residual"),
         el("span",{class:"spacer",style:"flex:1"}),
         el("button",{class:"btn",onclick:()=>openSettlement(worst.settlement_id)},"Open settlement →")),
-      el("div",{class:"body",style:"overflow-x:auto;padding-bottom:8px"}, waterfall(wf)),
-      el("div",{style:"padding:0 16px 14px;color:var(--ink-3);font-size:12.5px"},
-        "Every deduction is computed from the demo policy registry, never read back off the "+
-        "settlement report. The final bar is either ₹0.00 or the exact amount no source record "+
-        "accounts for.")),
+      el("div",{class:"body",style:"overflow-x:auto;padding-bottom:14px"}, waterfall(wf))),
 
     el("div",{class:"grid",style:"grid-template-columns:1fr 1fr"},
       el("div",{class:"card"},
@@ -450,21 +439,17 @@ function viewDashboard(){
         el("div",{class:"tablewrap"}, el("table",{},
           el("tbody",{},
             gtRow("Resolvable anomalies detected",
-              `${g.resolvable_detected} / ${g.resolvable_planted}`, g.resolvable_detection_rate_pct,
-              "a 'flag nothing' engine scores 0% here — that is the point"),
+              `${g.resolvable_detected} / ${g.resolvable_planted}`, g.resolvable_detection_rate_pct),
             gtRow("Diagnosis accuracy (correct exception type)",
-              `${g.diagnosis_correct} / ${g.resolvable_planted}`, g.diagnosis_accuracy_pct,
-              "named the right defect, not just 'something is wrong'"),
+              `${g.diagnosis_correct} / ${g.resolvable_planted}`, g.diagnosis_accuracy_pct),
             gtRow("Undiagnosable cases correctly escalated",
               `${g.unresolvable_correctly_escalated} / ${g.unresolvable_planted}`,
-              g.correct_escalation_rate_pct, "refused to guess, and said so in rupees"),
+              g.correct_escalation_rate_pct),
             gtRow("False-positive traps avoided",
               `${g.false_positive_traps_avoided} / ${g.false_positive_traps}`,
-              100*g.false_positive_traps_avoided/(g.false_positive_traps||1),
-              "nearby evidence that must NOT be used"),
+              100*g.false_positive_traps_avoided/(g.false_positive_traps||1)),
             gtRow("False auto-resolutions", String(g.false_auto_resolution_count),
-              g.false_auto_resolution_count===0?100:0,
-              "a wrong tier-A verdict is worse than an open exception")))),
+              g.false_auto_resolution_count===0?100:0)))),
         g.matcher_guard_checks.length ? el("div",{class:"body",style:"border-top:1px solid var(--line-2)"},
           el("div",{style:"font-size:12px;color:var(--ink-3);margin-bottom:7px;font-weight:600"},
             "Matcher guards"),
@@ -476,7 +461,6 @@ function viewDashboard(){
       el("div",{class:"card"},
         el("h3",{},"Throughput"),
         el("div",{class:"body"},
-          el("p",{style:"margin:0 0 12px;color:var(--ink-2);line-height:1.6"}, t.headline),
           el("dl",{class:"kv"},
             el("dt",{},"Batch wall time"), el("dd",{}, t.elapsed_seconds+" s"),
             el("dt",{},"Records / second"), el("dd",{}, t.records_per_second.toLocaleString()),
@@ -539,7 +523,6 @@ function viewSettlements(){
       sel(["","A","B","C"],f.tier,v=>{f.tier=v;render()}),
       el("label",{},"Status"),
       sel(["","PROCESSED","ON_HOLD","FAILED"],f.status,v=>{f.status=v;render()}),
-      el("span",{class:"policy-badge"},"fee · tax · cycle = Demo Merchant Policy"),
       el("span",{class:"legend"},
         el("span",{},el("span",{class:"dchip a"},"Δ ✓")," delta is exactly zero"),
         el("span",{},el("span",{class:"dchip a"},"Δ ●")," non-zero but fully explained"),
@@ -597,7 +580,7 @@ function viewDetail(){
 
     el("div",{class:"card"},
       el("h3",{},"Waterfall for this settlement",
-        el("span",{class:"policy-badge",style:"margin-left:auto"},"Demo Merchant Policy")),
+        ),
       el("div",{class:"body",style:"overflow-x:auto"}, waterfall(d.waterfall))),
 
     el("div",{class:"grid",style:"grid-template-columns:1.25fr 1fr"},
@@ -637,7 +620,7 @@ function viewDetail(){
                 e.unexplained_paise?el("div",{style:"font-size:11px;color:var(--red)"},
                   "open "+rupees(e.unexplained_paise)):null))))))) : null,
         d.ground_truth.length ? el("div",{class:"card"},
-          el("h3",{},"Ground truth for this settlement",el("span",{class:"sub"},"what we planted")),
+          el("h3",{},"Ground truth for this settlement"),
           el("div",{class:"body"}, ...d.ground_truth.map(g=>el("div",
             {style:"margin-bottom:10px;font-size:12.5px"},
             el("div",{}, el("span",{class:"tag"},g.anomaly_type)," ",
@@ -685,7 +668,7 @@ function explainBlock(kind, deltas, attrs){
         a.derivation==="FUZZY"?el("span",{class:"chip b",style:"margin-left:6px"},"fuzzy"):null))))
       : el("div",{class:"why"}, d.delta_paise===0 ?
           "Nothing to explain — this delta is exactly zero." :
-          "No source record accounts for this. Zero attributions is the answer, not a failure."),
+          "No source record accounts for this."),
     el("div",{class:"sep"}),
     el("div",{class:"row tot"}, el("div",{class:"l"},"Explained"),
       el("div",{class:"r"},rupees(d.explained_paise))),
@@ -711,8 +694,8 @@ function explainD4(deltas, attrs){
         ...mine.map(a=>el("div",{class:"why"}, ...a.rule_ids.map(r=>el("span",{class:"rule"},r)),
           a.rationale)),
         mine.length?null:el("div",{class:"why"},
-          "Nothing explains this gap — escalated, with the seller named and the rupees stated."));
-    })) : el("div",{class:"why"},"Every settled allocation was paid exactly what it was owed."));
+          "Nothing explains this gap."));
+    })) : el("div",{class:"why"},"Every settled allocation was paid in full."));
 }
 function tabsCard(title, panes){
   const names=Object.keys(panes).filter(k=>panes[k]);
@@ -834,7 +817,7 @@ function viewExceptions(){
         v=>{f.kind=v;render()})),
     el("div",{class:"tablewrap",style:"max-height:72vh;overflow-y:auto"},
       el("table",{},
-        el("thead",{},el("tr",{},...["Exception","What is wrong","Δ","Amount","Explained",
+        el("thead",{},el("tr",{},...["Exception","Type","Δ","Amount","Explained",
           "Unexplained","Tier","Recommended action"].map(h=>
             el("th",{class:["Amount","Explained","Unexplained"].includes(h)?"num":""},h)))),
         el("tbody",{},...rows.map(e=>el("tr",{class:"clickable zebra",
@@ -853,7 +836,7 @@ function viewExceptions(){
           el("td",{class:"num",style:e.unexplained_paise?"color:var(--red);font-weight:650":""},
             rupees(e.unexplained_paise)),
           el("td",{},el("span",{class:"chip "+tierClass(e.tier)},e.tier)),
-          el("td",{class:"wrap",style:"color:var(--ink-2);font-size:12.5px"},
+          el("td",{class:"clamp",title:e.recommended_action},
             e.recommended_action)))))));
 }
 
@@ -861,9 +844,7 @@ function viewExceptions(){
 function viewSellers(){
   const rows=S.sellers;
   return el("div",{class:"card"},
-    el("h3",{},"Seller payout reconciliation (Δ4)",
-      el("span",{class:"sub"},
-        "a settlement can reconcile perfectly while a seller is still short")),
+    el("h3",{},"Seller payout reconciliation (Δ4)"),
     el("div",{class:"tablewrap",style:"max-height:74vh;overflow-y:auto"},
       el("table",{},
         el("thead",{},el("tr",{},...["Seller","Type","Commission","Status","Settled allocations",
@@ -874,8 +855,7 @@ function viewSellers(){
           el("td",{}, el("div",{},s.seller_name),
             el("div",{class:"mono",style:"font-size:11px;color:var(--ink-4)"},s.seller_id)),
           el("td",{},s.seller_type),
-          el("td",{class:"num"}, (s.commission_bps/100).toFixed(2)+"%",
-            el("div",{class:"policy-badge",style:"margin-top:2px"},"demo policy")),
+          el("td",{class:"num"}, (s.commission_bps/100).toFixed(2)+"%"),
           el("td",{},el("span",{class:"chip "+(s.status==="ACTIVE"?"a":"b")},s.status)),
           el("td",{class:"num"},String(s.settled_allocations)),
           el("td",{class:"num"},compact(s.owed_paise)),
@@ -892,8 +872,7 @@ function viewTrace(){
   const q=S.traceQ;
   return el("div",{class:"grid",style:"gap:16px"},
     el("div",{class:"card"},
-      el("h3",{},"Trace money",el("span",{class:"sub"},
-        "one recursive walk over the lineage table — a table, never a node-link diagram")),
+      el("h3",{},"Trace money"),
       el("div",{class:"filters"},
         sel(["payment","settlement","refund","seller_allocation","transfer","bank_transaction",
           "order","customer"], q.type, v=>{q.type=v;render()}),
@@ -980,8 +959,7 @@ function traceTree(t){
   }
   if(!t.downstream.length){ out.appendChild(el("div",{style:"color:var(--ink-3);margin:12px 0 6px"},
     "Downstream")); out.appendChild(el("div",{class:"node"}, el("div",{class:"line"},
-    el("span",{class:"meta"},"Nothing flows out of this record. For a FAILED payment that is the "+
-      "correct answer -- it never reached a settlement, an allocation or the bank.")))); return out; }
+    el("span",{class:"meta"},"Nothing flows out of this record.")))); return out; }
   out.appendChild(el("div",{style:"color:var(--ink-3);margin:12px 0 6px"},
     "Downstream — "+t.root.type+" "+t.root.id+" "+label(t.root.type,t.root.id)));
   Object.keys(groups).sort((a,b)=>a-b).forEach(depth=>{
@@ -1059,12 +1037,7 @@ function viewData(){
     right = el("div",{class:"empty"},el("span",{class:"spin"})," loading rows…");
   } else if(!d.page){
     right = el("div",{class:"ask-note"},
-      el("p",{},"Pick a table on the left to see its actual rows for this run."),
-      el("p",{},"Counts update every time you generate a dataset or simulate a cycle, so "+
-                "this is where you confirm new data actually landed. ",
-        el("b",{},"Generated data"), " is the book the engine reads; ",
-        el("b",{},"Engine results"), " is what it concluded — deltas, attributions, "+
-        "exceptions and the audit trail, all tagged with this run's id."));
+      el("p",{},"Select a table to view its rows for this run."));
   } else if(d.page.error){
     right = el("div",{class:"ask-warn"}, d.page.error);
   } else {
@@ -1098,8 +1071,7 @@ function viewData(){
 
   return el("div",{class:"card"},
     el("h3",{},"Data",
-      el("span",{class:"sub"},
-        "every table in the schema, scoped to this run — read-only"),
+      el("span",{class:"sub"},"read-only"),
       el("button",{class:"btn",style:"float:right",
         onclick:()=>loadTables(true).then(render)},"Refresh")),
     el("div",{class:"db-wrap"}, list, right));
@@ -1159,15 +1131,9 @@ function viewAsk(){
       el("pre",{class:"mono",style:"background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto"},
         (st.expected_env||["GEMINI_API_KEY"]).map(k=>`export ${k}=…`).join("\n")+
         "\n./run.sh serve"),
-      el("p",{},"Everything else on this page works without it. The reconciliation is ",
-        el("b",{},"deterministic"),
-        " — the agent only reads results the engine already computed and explains them.")));
+      el("p",{},"The rest of the application is unaffected.")));
   } else if(!S.agent.turns.length && !S.agent.asking){
     scroll.appendChild(el("div",{class:"ask-note"},
-      el("p",{},"Ask about anything in this run. The agent has read-only tools over the "+
-        "persisted deltas, attribution evidence, matcher trail, ledger postings and audit log. "+
-        "It quotes figures the engine computed and cites the records it read — it never "+
-        "recalculates a number, and it cannot change one."),
       el("div",{class:"ask-seed"}, ...(st.suggested_questions||[]).map(q=>
         el("button",{onclick:()=>askAgent(q)}, q)))));
   }
@@ -1179,10 +1145,8 @@ function viewAsk(){
         el("div",{class:"body"}, ...paragraphs(t.answer),
           (t.unsupported_references||[]).length
             ? el("div",{class:"ask-warn"},
-                el("b",{},"Unverified reference. "),
-                "This answer named "+t.unsupported_references.join(", ")+
-                ", which did not appear in any record the agent actually read. Treat that part "+
-                "as unsupported.")
+                el("b",{},"Unverified: "), t.unsupported_references.join(", "),
+                " — not present in any record the agent read.")
             : null,
           el("div",{class:"ask-meta"},
             ...(t.citations||[]).slice(0,12).map(c=>
@@ -1216,8 +1180,7 @@ function viewAsk(){
       S.agent.asking?"Reading…":"Ask")));
   return el("div",{class:"card"},
     el("h3",{},"Ask the agent",
-      el("span",{class:"sub"},
-        "read-only over this run — explains the numbers, never changes them")),
+      el("span",{class:"sub"},"read-only")),
     body);
 }
 
@@ -1240,7 +1203,7 @@ function render(){
   }
   const app=$("#app"); app.innerHTML="";
   if(!S.run){ app.appendChild(el("div",{class:"empty"},
-    "No reconciliation runs yet. Generate a dataset, then run reconciliation.")); }
+    "No runs yet. Generate a dataset, then run reconciliation.")); }
   else if(S.busy && !S.detail && S.tab==="detail"){
     app.appendChild(el("div",{class:"empty"},el("span",{class:"spin"})," loading settlement…"));
   } else {
@@ -1261,10 +1224,25 @@ $("#btn-generate").addEventListener("click", async ()=>{
     const seed=Number(prompt("Seed (the dataset is byte-identical for a given seed):","42")||42);
     const r=await api("/api/datasets",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({seed, settlements:100, label:"demo"})});
+    window.__lastDataset=r.dataset_id;
+
+    // The dataset_id is derived from the seed, so generating REPLACES the dataset
+    // for that seed -- and datasets cascade, so every run against it is deleted
+    // too. If the UI stayed on the old run_id, every subsequent call (metrics,
+    // conversation, ask, tables) would 404 against a run that no longer exists.
+    // Reconcile immediately and move the UI onto the new run, the way the tick
+    // and evaluation-batch buttons already do.
+    b.textContent="Reconciling…";
+    const m=await api("/api/runs",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({dataset_id:r.dataset_id})});
+    S.runs=await api("/api/runs");
+    await selectRun(m.run_id);
+    S.tab="dashboard";
+    await loadTables(false);
     toast(`Dataset ${r.dataset_id.slice(0,8)} · `+
       `${r.row_counts.total_financial_records.toLocaleString()} records · `+
-      `${r.planted_anomalies} planted anomalies`);
-    window.__lastDataset=r.dataset_id;
+      `${r.planted_anomalies} planted · reconciled in ${m.throughput.elapsed_seconds}s · `+
+      `${m.accuracy.amount_at_risk_display} at risk`);
   }catch(e){toast(e.message)}
   b.disabled=false; b.textContent="Generate dataset";
 });
