@@ -32,7 +32,7 @@ def main() -> int:
     t, a, g, ti, ex = (m["throughput"], m["accuracy"], m["ground_truth"], m["tiers"],
                        m["exceptions"])
     line("=")
-    print("  AI FINANCE CONTROLLER -- reconciliation report")
+    print("  RAZOR RECON AI -- reconciliation report")
     print(f"  run {m['run_id']}   policy {m['policy_version']}   config {m['config_hash']}")
     line("=")
     print()

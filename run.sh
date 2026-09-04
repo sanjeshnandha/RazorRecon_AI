@@ -45,6 +45,8 @@ db_summary(){ psql "$DATABASE_URL" -c "SELECT d.label, left(d.dataset_id::text,8
  FROM datasets d WHERE (d.row_counts->>'settlements')::int > 1 ORDER BY d.generated_at DESC;"; }
 agent_schema(){ psql "$DATABASE_URL" -q -f db/agent.sql
               echo "agent_transcripts ready."; }
+tax_schema(){ psql "$DATABASE_URL" -q -f db/tax.sql
+              echo "tax_invoices ready."; }
 reconcile() { python3.12 -m scripts.reconcile; }
 evalbatch() { python3.12 -m fixtures.loader; }
 evalcsv()   { python3.12 -m fixtures.export_csv; }
@@ -65,6 +67,7 @@ case "${1:-help}" in
   generate-clean) gen_clean ;;
   reconcile)      reconcile ;;
   agent-schema)   agent_schema ;;
+  tax-schema)     tax_schema ;;
   db-shell)       db_shell ;;
   db-summary)     db_summary ;;
   tick)           tick ;;
@@ -74,6 +77,6 @@ case "${1:-help}" in
   web)            web ;;
   serve)          serve ;;
   demo)           demo ;;
-  *)  grep -E '^\s+(install|db-up|db-down|db-shell|db-summary|schema|agent-schema|generate|generate-clean|reconcile|tick|evaluation-batch|evaluation-csv|test|web|serve|demo)\)' "$0" \
+  *)  grep -E '^\s+(install|db-up|db-down|db-shell|db-summary|schema|agent-schema|tax-schema|generate|generate-clean|reconcile|tick|evaluation-batch|evaluation-csv|test|web|serve|demo)\)' "$0" \
         | sed 's/).*//' | sed 's/^/  ./run.sh /' ;;
 esac

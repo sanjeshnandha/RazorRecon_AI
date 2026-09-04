@@ -1,4 +1,4 @@
-# AI Finance Controller — P0
+# Razor Recon AI — P0
 
 Deterministic settlement reconciliation for a marketplace. Four independent
 deltas over ~28,000 financial records, a measured accuracy number with a
@@ -49,7 +49,7 @@ Individual steps:
 | `make reconcile` | runs the engine, prints the report |
 | `make tick` | appends the next settlement cycle, then re-reconciles |
 | `make evaluation-batch` | loads the fixed, hand-authored evaluation batch |
-| `make test` | 236 tests, including the 19 golden scenarios |
+| `make test` | 271 tests, including the 19 golden scenarios |
 | `make serve` | FastAPI + the SPA, one process |
 
 Every target also exists as `./run.sh <target>`. If `Makefile` did not survive
@@ -363,22 +363,23 @@ different seed produces a different one.
 ```
 policy/policy.yaml       the registry — read by BOTH the generator and the engine
 generator/               generate.py, append.py, origin.py, anomalies.py, calendar.py
+policy/tax.yaml          a SEPARATE registry for the tax matcher, own hash
 engine/                  money.py, policy.py, loader.py, invariants.py,
                          calculation.py, matcher.py, subset_sum.py,
                          attribution.py, exceptions.py, lineage.py,
-                         forecast.py, metrics.py, runner.py, db.py
+                         forecast.py, taxmatch.py, metrics.py, runner.py, db.py
 fixtures/                the static evaluation batch: authoring.py, loader.py,
                          evaluation_batch.json, export_csv.py, csv/
 agent/                   the investigation agent: llm.py, tools.py,
                          investigator.py, store.py
 api/                     main.py, schemas.py, browse.py, static/ (the built SPA)
 web/                     index.html + build.sh
-db/                      schema.sql, indexes.sql, agent.sql
+db/                      schema.sql, indexes.sql, agent.sql, tax.sql
 tests/                   golden/manual/ (phase 0), test_golden.py (19 scenarios),
                          test_phase0_fixtures.py, test_invariants.py,
                          test_calculation.py, test_money.py, test_append.py,
                          test_agent.py, test_browse.py, test_evaluation_batch.py,
-                         test_forecast.py
+                         test_forecast.py, test_taxmatch.py
 scripts/reconcile.py     the terminal report
 ```
 
@@ -441,6 +442,8 @@ GET  /api/runs/{id}/trace?node_type=&node_id=       Trace Money (recursive CTE)
 GET  /api/runs/{id}/audit                           every engine decision
 GET  /api/runs/{id}/forecast?horizon=&as_of=        the forward cash position,
                                                     itemised line by line
+GET  /api/runs/{id}/tax                             input tax credit across three
+                                                    sources, two verdicts per line
 GET  /api/runs/{id}/export.csv | export.json        downloadable report
 
 GET  /api/fixtures/evaluation-batch                 what the static batch contains
@@ -467,6 +470,9 @@ dependencies and no CDN calls**, so the demo runs offline next to the API —
 `web/build.sh` is a copy. If you later want a bundler, replace that script and
 nothing else changes.
 
+- **Title screen** — the wordmark and one button, white on emerald: the inverse
+  of every screen behind it. An overlay, not a route — the app boots underneath,
+  so nothing is waiting when you click.
 - **Dashboard** — ₹ amount at risk in large type, the financial waterfall for the
   worst settlement in the batch, the three reconciliation rates side by side
   (deliberately not blended), the ground-truth scorecard, and throughput.
@@ -474,6 +480,10 @@ nothing else changes.
   settlement with the date its cash lands, every settlement awaiting a bank
   credit, every seller payout due, and everything already overdue. Horizon
   selectable from 10 to 60 working days.
+- **Tax credit** — input tax credit across three sources. One block per
+  settlement, colour-edged by verdict, findings open and clean lines collapsed,
+  with a floating explainability panel that opens the read-only agent scoped to
+  the page.
 - **Settlements** — every settlement with Δ₁/Δ₂/Δ₃/Δ₄ chips, expected vs actual
   vs bank, filters on tier and status.
 - **Settlement detail** — the waterfall for that settlement, the Δ₁ arithmetic
@@ -641,6 +651,75 @@ deferred, not overlooked.
 
 ---
 
+## Input tax credit
+
+Δ₁ proves the merchant was **charged** the right GST. That is not the same as
+proving they can **get it back**.
+
+Input tax credit on gateway fees is only recoverable if the supplier filed a tax
+invoice that reaches the merchant's GSTR-2B — the statement the GST portal
+auto-drafts each month from what suppliers themselves filed. A settlement can be
+flawless on all four deltas while the credit on its fees is unclaimable, and past
+the claim deadline that money is gone for good. It is one of the few
+reconciliation gaps that is a real, irreversible cash loss.
+
+`engine/taxmatch.py` reconciles three independent sources:
+
+| | source | who is at fault when it disagrees |
+|---|---|---|
+| CHARGED | `settlement_items.tax_paise` | — |
+| BOOKED | the `INPUT_GST` ledger postings | the merchant's own accountant |
+| CLAIMABLE | `tax_invoices` (GSTR-2B) | the supplier who did not file |
+
+**Two comparisons, not one.** Charged-vs-booked and booked-vs-filed are separate
+verdicts on every line and are never added together — different culprits,
+different remedies, and one settlement can carry both. A first draft returned
+early on the books check, and a settlement with a duplicated `INPUT_GST` posting
+*and* an invoice filed under the wrong tax heads reported only the first. A test
+pins it now.
+
+**Claim state** is what a controller acts on: `CLAIMABLE`, `DEFERRED` (real
+credit, arriving in a later return period), `AT_RISK`, `BLOCKED` (the portal says
+it was never creditable — nothing to chase). Keeping `BLOCKED` out of "at risk"
+matters, or someone spends a week chasing money that was never theirs.
+
+**The trap.** An invoice one period late is credit *deferred*, not credit *lost*.
+A naive "is it in this month's 2B" check calls it missing and overstates the loss.
+`EV_20` is that case, and it scores `DEFERRED` with ₹0 at risk.
+
+**A finding nobody planted.** The books leg independently rediscovers three
+existing Δ₁/Δ₃ anomalies from a different angle: a duplicated ledger group
+double-posts `INPUT_GST`, a missing one drops it, and the tax-rounding scenario
+shows a 2-paise gap. Corroboration from real planted data rather than defects
+invented for this table.
+
+### What it cost, stated plainly
+
+The third source does not exist in the world — it is a **synthetic GSTR-2B feed
+authored for this project**. That is a weaker claim than the rest of the system
+makes, where every record the engine reconciles comes from the generator and is
+accounted for in ground truth. So it is labelled as synthetic on the page, in the
+API response, in the agent's answers and in the GSTINs themselves, which contain
+"DEMO" and cannot be mistaken for real registrations. Nothing here is tax advice.
+
+The feature is also **strictly additive**. `policy/tax.yaml` is its own registry
+because `policy/policy.yaml`'s `config_hash` is stamped on every run ever made and
+must not move. `db/tax.sql` is idempotent and installs onto a live database;
+`schema.sql` was not touched. The five tax findings live beside their own data
+rather than in `ground_truth_anomalies`, so the four deltas' honesty metrics are
+byte-for-byte what they were.
+
+### The explainability panel
+
+The Tax credit page carries a floating button that opens a small chat box over the
+same read-only agent, scoped to the page and with its own transcript so it never
+disturbs the Ask tab. Citations are chips that jump to the record. It degrades the
+same way everything else does when no API key is set — and says the thing worth
+saying: every number on the page is computed without it, and the agent only
+explains what the matcher already decided.
+
+---
+
 ## The evaluation batch
 
 `make evaluation-batch`, or the **Evaluation batch** button in the header.
@@ -729,7 +808,7 @@ Ask it *"what is the single largest unexplained amount, and why could the engine
 not resolve it?"* and it calls tools, reads the persisted evidence, and answers
 with the settlement id, the delta id, the rupee figure and the rule that applied.
 
-**It cannot change anything.** `agent/tools.py` contains thirteen functions and
+**It cannot change anything.** `agent/tools.py` contains fourteen functions and
 only `SELECT` statements — a test asserts that, rather than trusting it. Every
 query is scoped to the one run the session was opened on and parameterised here,
 so no SQL the model wrote ever reaches the database; the model picks a tool name
@@ -753,6 +832,7 @@ The tools it has:
 | `get_policy` | the policy registry the engine computed against |
 | `get_audit` | the engine's own decision log |
 | `get_cash_forecast` | the forward cash position: what is due in, due out, and already overdue |
+| `get_tax_credit` | input tax credit: charged, booked and claimable, per settlement and per return period |
 
 **Two guardrails run after every answer.** The tool-call budget is bounded, so a
 confused model stops rather than walking the dataset. And every record id the

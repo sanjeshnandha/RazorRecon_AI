@@ -52,6 +52,10 @@ agent-schema:             ## add the agent transcript table to a LIVE db (idempo
 	psql "$$DATABASE_URL" -q -f db/agent.sql
 	@echo "agent_transcripts ready."
 
+tax-schema:               ## add the GSTR-2B table to a LIVE db (idempotent)
+	psql "$$DATABASE_URL" -q -f db/tax.sql
+	@echo "tax_invoices ready."
+
 reconcile:                ## run the engine over the newest dataset
 	$(PYTHON) -m scripts.reconcile
 
@@ -77,4 +81,4 @@ demo: db-up schema generate reconcile ## full pipeline from an empty database
 	@echo
 	@echo "  now run:  make serve   →  http://localhost:$(PORT)"
 
-.PHONY: help install db-up db-down schema generate generate-clean reconcile test web serve demo
+.PHONY: help install db-up db-down schema agent-schema tax-schema generate generate-clean reconcile test web serve demo

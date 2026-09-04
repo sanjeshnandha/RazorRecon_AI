@@ -28,7 +28,7 @@ from engine.money import rupees
 from engine.policy import load_policy
 
 STATIC = pathlib.Path(__file__).parent / "static"
-app = FastAPI(title="AI Finance Controller (P0)", version=runner.ENGINE_VERSION)
+app = FastAPI(title="Razor Recon AI (P0)", version=runner.ENGINE_VERSION)
 
 
 def _rows(sql, params=()):
@@ -437,6 +437,29 @@ def forecast_view(run_id: str, horizon: int = 15, as_of: str | None = None):
     return fc.to_dict(f)
 
 
+# -------------------------------------------------------------- tax credit ---
+@app.get("/api/runs/{run_id}/tax")
+def tax_view(run_id: str):
+    """Input tax credit, reconciled across three independent sources.
+
+    Charged (the settlement report) vs booked (the merchant's INPUT_GST postings)
+    vs claimable (the GSTR-2B feed). Two comparisons, reported separately and
+    never blended -- the first is the merchant's own posting error, the second is
+    the supplier's filing error.
+
+    Read-only and computed on demand, exactly like the forecast. It writes
+    nothing, touches no delta, tier or exception, and carries its own versioned
+    registry (policy/tax.yaml) so no run's config_hash moves because of it.
+
+    Degrades rather than 500s when db/tax.sql has not been installed.
+    """
+    from engine import taxmatch as tm
+    ds = _dataset_of(run_id)
+    with tx() as conn:
+        rep = tm.build(conn, run_id, ds)
+    return tm.to_dict(rep)
+
+
 # --------------------------------------------------------------- fixtures ---
 @app.get("/api/fixtures/evaluation-batch")
 def evaluation_batch_info():
@@ -576,7 +599,7 @@ def export_csv(run_id: str):
     m = _one("SELECT metrics FROM reconciliation_runs WHERE run_id=%s", (run_id,))["metrics"]
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["# AI Finance Controller reconciliation report"])
+    w.writerow(["# Razor Recon AI reconciliation report"])
     w.writerow([f"# {DISCLAIMER}"])
     w.writerow([f"# run_id={run_id} policy={m['policy_version']} engine_config={m['config_hash']}"])
     w.writerow([f"# {m['throughput']['headline']}"])

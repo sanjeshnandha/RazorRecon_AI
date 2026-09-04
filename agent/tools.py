@@ -497,6 +497,66 @@ def get_cash_forecast(conn, ctx, horizon_working_days: int = 15,
     }
 
 
+def get_tax_credit(conn, ctx, status: str | None = None, return_period: str | None = None,
+                   limit: int = DEFAULT_ROWS) -> dict:
+    """Input tax credit (GST on gateway fees), reconciled across three sources:
+    what the gateway charged, what the merchant booked to INPUT_GST, and what the
+    GSTR-2B feed says is actually claimable.
+
+    Two independent comparisons, never blended. `status` is the FILING verdict
+    (booked vs GSTR-2B): MATCHED, NOT_FILED, AMOUNT_MISMATCH, SPLIT_MISMATCH,
+    PERIOD_MISMATCH, ITC_BLOCKED. `books_status` on each line is the separate
+    BOOKS verdict (charged vs INPUT_GST) and has its own totals.
+
+    claim_state is what a controller acts on: CLAIMABLE, DEFERRED (real credit,
+    later return period), AT_RISK (not claimable as things stand), BLOCKED (the
+    portal says it is not creditable at all). Every figure is synthetic and
+    nothing here is tax advice.
+    """
+    from engine import taxmatch as tm
+
+    limit = _clamp(limit, 1, MAX_ROWS, DEFAULT_ROWS)
+    rep = tm.build(conn, ctx["run_id"], ctx["dataset_id"])
+    d = tm.to_dict(rep)
+    if not d["installed"]:
+        return {"error": "the tax_invoices table is not installed on this database "
+                         "(run db/tax.sql), so there is no GSTR-2B feed to match against"}
+
+    t = dict(d["totals"])
+    for k in [k for k in t if k.endswith("_paise")]:
+        t[k.replace("_paise", "_rupees")] = rupees(t[k])
+
+    lines = d["lines"]
+    if status:
+        lines = [l for l in lines if l["status"] == status]
+    if return_period:
+        lines = [l for l in lines if l["return_period"] == return_period]
+    matching = len(lines)
+    out = []
+    for l in lines[:limit]:
+        row = dict(l)
+        for k in ("charged_tax_paise", "booked_tax_paise", "claimable_tax_paise",
+                  "at_risk_paise", "books_delta_paise"):
+            row[k.replace("_paise", "_rupees")] = rupees(l[k])
+        out.append(row)
+
+    periods = []
+    for pr in d["periods"]:
+        row = dict(pr)
+        for k in [k for k in pr if k.endswith("_paise")]:
+            row[k.replace("_paise", "_rupees")] = rupees(pr[k])
+        periods.append(row)
+
+    return {"tax_policy_version": d["tax_policy_version"],
+            "tax_config_hash": d["tax_config_hash"],
+            "place_of_supply": d["place_of_supply"],
+            "supplier_gstin": d["supplier_gstin"], "merchant_gstin": d["merchant_gstin"],
+            "totals": t, "periods": periods,
+            "lines": out, "lines_shown": len(out), "lines_matching": matching,
+            "lines_truncated": matching > len(out),
+            "notes": d["notes"], "disclaimer": d["disclaimer"]}
+
+
 # =============================================================================
 # Registry. The schema list is what the model sees; HANDLERS is what runs.
 # A name absent from HANDLERS can never execute, whatever the model asks for.
@@ -515,6 +575,7 @@ HANDLERS = {
     "get_policy": get_policy,
     "get_audit": get_audit,
     "get_cash_forecast": get_cash_forecast,
+    "get_tax_credit": get_tax_credit,
 }
 
 _S = lambda **kw: {"type": "string", **kw}
@@ -556,6 +617,12 @@ SCHEMAS = [
         "horizon_working_days": _I(description="1-60, default 15"),
         "bucket": _S(enum=["settlement_awaited", "pipeline", "seller_payout"],
                      description="restrict the returned lines to one bucket"),
+        "limit": _I(description="max lines to return, max 60")}),
+    _tool("get_tax_credit", {
+        "status": _S(enum=["MATCHED", "NOT_FILED", "AMOUNT_MISMATCH", "SPLIT_MISMATCH",
+                           "PERIOD_MISMATCH", "ITC_BLOCKED"],
+                     description="the filing verdict to restrict to"),
+        "return_period": _S(description="a GSTR-2B period, e.g. 2026-03"),
         "limit": _I(description="max lines to return, max 60")}),
 ]
 

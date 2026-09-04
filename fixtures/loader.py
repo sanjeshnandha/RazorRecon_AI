@@ -32,6 +32,36 @@ def _ts(x) -> datetime:
     return datetime.combine(_d(x), time(11, 0), IST)
 
 
+
+def _load_tax_invoices(conn, ds) -> int:
+    """The GSTR-2B feed for the tax-line matcher.
+
+    Additive and optional. `tax_invoices` lives in db/tax.sql rather than the
+    destructive schema.sql, so an installation that has not run it simply gets a
+    batch without a tax feed -- everything else loads exactly as before, and the
+    22 scenarios score identically either way.
+    """
+    from fixtures.authoring import TAX_INVOICES
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT to_regclass('public.tax_invoices') AS t")
+        if not cur.fetchone()["t"]:
+            print("  tax_invoices not installed (run db/tax.sql) -- skipping the "
+                  "GSTR-2B feed")
+            return 0
+    rows = [(ds, i["invoice_no"], i["invoice_date"], i["return_period"],
+             i["supplier_gstin"], i["document_type"], i["settlement_id"],
+             i["taxable_value_paise"], i["cgst_paise"], i["sgst_paise"],
+             i["igst_paise"], i["itc_eligible"], i["ineligible_reason"],
+             i["filed_at"]) for i in TAX_INVOICES]
+    copy_rows(conn, "tax_invoices",
+              ["dataset_id","invoice_no","invoice_date","return_period","supplier_gstin",
+               "document_type","settlement_id","taxable_value_paise","cgst_paise",
+               "sgst_paise","igst_paise","itc_eligible","ineligible_reason","filed_at"],
+              rows)
+    return len(rows)
+
+
 def load_batch() -> dict:
     return json.loads(BATCH.read_text())
 
@@ -396,6 +426,7 @@ def load(conn, batch: dict | None = None) -> dict:
                "description"], [tuple(l) for l in ledger])
     copy_rows(conn, "money_edges", ["dataset_id","src_type","src_id","dst_type","dst_id",
                                     "edge_kind","amount_paise"], edges)
+    _load_tax_invoices(conn, ds)
     copy_rows(conn, "ground_truth_anomalies",
               ["dataset_id","anomaly_id","anomaly_type","subject_type","subject_id","settlement_id",
                "expected_delta_kind","expected_exception_type","original_field",

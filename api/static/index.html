@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Finance Controller</title>
+<title>Razor Recon AI</title>
 <style>
 /* ===========================================================================
    White + emerald. One accent colour, used only where it means something:
@@ -101,6 +101,52 @@ select:focus,input:focus{border-color:var(--em-500);box-shadow:0 0 0 3px var(--e
 .btn.primary:hover{background:var(--em-700);border-color:var(--em-700);color:#fff}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .btn.on{background:var(--em-50);border-color:var(--em-300);color:var(--em-700);font-weight:600}
+
+/* --- the explainability panel: a floating button and the box it opens ----- */
+.xai-fab{position:fixed;right:26px;bottom:26px;z-index:60;width:52px;height:52px;
+  border-radius:50%;border:1px solid var(--em-600);background:var(--em-600);color:#fff;
+  cursor:pointer;box-shadow:0 6px 20px rgba(5,150,105,.32);display:flex;
+  align-items:center;justify-content:center}
+.xai-fab:hover{background:var(--em-700);border-color:var(--em-700)}
+.xai-fab .dot{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;
+  border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 5px;
+  border:2px solid #fff}
+.xai-panel{position:fixed;right:26px;bottom:90px;z-index:60;width:390px;
+  max-width:calc(100vw - 52px);max-height:min(560px,calc(100vh - 140px));
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 18px 48px rgba(15,23,42,.18);display:flex;flex-direction:column;
+  overflow:hidden}
+.xai-head{display:flex;align-items:center;gap:8px;padding:11px 13px;
+  border-bottom:1px solid var(--line-2);background:var(--bg-2)}
+.xai-head b{font-size:13px}
+.xai-head .sub{font-size:11.5px;color:var(--ink-3)}
+.xai-x{margin-left:auto;border:0;background:none;cursor:pointer;color:var(--ink-3);
+  font-size:17px;line-height:1;padding:2px 4px}
+.xai-x:hover{color:var(--ink-1)}
+.xai-body{flex:1;overflow-y:auto;padding:12px 13px;display:flex;flex-direction:column;gap:11px}
+.xai-seed{display:flex;flex-direction:column;gap:6px}
+.xai-seed button{text-align:left;font-size:12.5px;border:1px solid var(--line);
+  background:#fff;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--ink-2)}
+.xai-seed button:hover{border-color:var(--em-300);background:var(--em-50);color:var(--em-700)}
+.xai-q{align-self:flex-end;max-width:88%;background:var(--em-600);color:#fff;
+  border-radius:11px 11px 3px 11px;padding:7px 11px;font-size:12.5px;line-height:1.5}
+.xai-a{max-width:96%;background:var(--bg-2);border:1px solid var(--line-2);
+  border-radius:11px 11px 11px 3px;padding:9px 11px;font-size:12.5px;line-height:1.62;
+  color:var(--ink-1)}
+.xai-a p{margin:0 0 7px}
+.xai-a p:last-child{margin:0}
+.xai-cites{margin-top:7px;display:flex;flex-wrap:wrap;gap:4px}
+.xai-cites button{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);
+  background:#fff;border-radius:5px;padding:1px 5px;cursor:pointer;color:var(--ink-2)}
+.xai-cites button:hover{border-color:var(--em-300);color:var(--em-700)}
+.xai-warn{margin-top:7px;font-size:11.5px;color:var(--red);background:var(--red-bg);
+  border:1px solid var(--red-line);border-radius:7px;padding:6px 8px}
+.xai-foot{border-top:1px solid var(--line-2);padding:9px 11px;display:flex;gap:7px}
+.xai-foot input{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  font-size:12.5px;font-family:inherit;outline:none}
+.xai-foot input:focus{border-color:var(--em-300)}
+.xai-note{font-size:11px;color:var(--ink-3);padding:0 13px 9px;line-height:1.5}
 nav.tabs{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);background:#fff;
   overflow-x:auto}
 nav.tabs button{border:0;background:none;padding:11px 14px;cursor:pointer;color:var(--ink-3);
@@ -220,13 +266,95 @@ pre{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;paddin
 .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--em-200);
   border-top-color:var(--em-600);border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+
+
+/* --- one settlement, one block. The previous version interleaved a data row
+   and a detail row in a single table, so nothing marked where one settlement
+   ended and the next began -- 22 of them ran together into a wall of text. --- */
+.tx-list{display:flex;flex-direction:column;gap:14px;padding:6px 16px 18px}
+.tx-item{border:1px solid var(--line);border-radius:11px;background:#fff;
+  overflow:hidden}
+.tx-item[data-tone="c"]{box-shadow:inset 3px 0 0 var(--red)}
+.tx-item[data-tone="b"]{box-shadow:inset 3px 0 0 var(--amber)}
+.tx-item[data-tone="a"]{box-shadow:inset 3px 0 0 var(--em-500)}
+.tx-item[data-tone="n"]{box-shadow:inset 3px 0 0 var(--ink-3)}
+
+.tx-top{display:flex;align-items:center;gap:12px;padding:13px 16px;flex-wrap:wrap}
+.tx-sid{font-family:var(--mono);font-size:13px;font-weight:600;border:1px solid var(--line);
+  background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer;color:var(--ink-1)}
+.tx-sid:hover{border-color:var(--em-300);color:var(--em-700);background:var(--em-50)}
+.tx-date{font-size:12.5px;color:var(--ink-3);white-space:nowrap}
+.tx-chips{display:flex;gap:6px;flex-wrap:wrap}
+.tx-amts{margin-left:auto;display:flex;gap:26px;align-items:flex-start}
+.tx-amt{text-align:right;white-space:nowrap}
+.tx-amt .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--ink-3);font-weight:600}
+.tx-amt .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;
+  margin-top:3px}
+.tx-amt .v.risk{color:var(--red);font-weight:600}
+
+.tx-body{border-top:1px solid var(--line-2);background:var(--bg-2);padding:14px 16px}
+.tx-find{display:grid;grid-template-columns:76px 1fr;gap:9px 14px;align-items:start}
+.tx-find .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+  font-weight:700;color:var(--ink-3);padding-top:3px}
+.tx-find .txt{font-size:13px;line-height:1.62;color:var(--ink-1)}
+
+/* The three sources, side by side and vertically aligned across every block, so
+   charged / booked / claimable can be compared down the page as well as across. */
+.tx-ev{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.tx-ev>div{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.tx-ev .s{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--ink-3);font-weight:700}
+.tx-ev .a{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;
+  margin-top:4px;color:var(--ink-1)}
+.tx-ev .l{font-size:11.5px;color:var(--ink-3);margin-top:3px;line-height:1.5}
+.tx-rule{margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+.tx-toggle{margin-left:auto;border:0;background:none;cursor:pointer;font-size:12px;
+  color:var(--ink-3);padding:4px 6px;border-radius:6px}
+.tx-toggle:hover{color:var(--em-700);background:var(--em-50)}
+@media (max-width:900px){
+  .tx-amts{margin-left:0;width:100%;gap:20px}
+  .tx-ev{grid-template-columns:1fr}
+}
+
+/* --- the title screen: shown once per load, dismissed into the dashboard --- */
+/* Inverted from the rest of the app on purpose: the product is white-on-emerald
+   everywhere else, so the opener is emerald-on-white flipped. Two elements only,
+   the name and the way in. */
+#splash{position:fixed;inset:0;z-index:200;
+  background:radial-gradient(1200px 760px at 50% 32%, var(--em-500) 0%,
+             var(--em-600) 46%, var(--em-700) 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:32px;animation:sp-in .32s ease-out}
+#splash.leaving{animation:sp-out .3s ease-in forwards;pointer-events:none}
+@keyframes sp-in{from{opacity:0}to{opacity:1}}
+@keyframes sp-out{to{opacity:0;transform:scale(1.012)}}
+.sp-name{font-size:clamp(38px,7vw,68px);font-weight:680;letter-spacing:-.024em;
+  color:#fff;margin:0}
+.sp-go{margin-top:38px;font-size:15px;padding:13px 28px;border-radius:10px;
+  background:#fff;border:1px solid #fff;color:var(--em-700);font-weight:600;
+  box-shadow:0 8px 24px rgba(4,120,87,.28)}
+.sp-go:hover{background:#fff;border-color:#fff;color:var(--em-900)}
+/* The button is autofocused so Enter works immediately. Chromium's default ring
+   is invisible against white here, so the ring is drawn in the surrounding green. */
+.sp-go:focus{outline:none}
+.sp-go:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.55),
+  0 8px 24px rgba(4,120,87,.28)}
+@media (prefers-reduced-motion:reduce){
+  #splash,#splash.leaving{animation:none}
+}
 </style>
 </head>
 <body>
+<div id="splash">
+  <h1 class="sp-name">Razor Recon AI</h1>
+  <button class="btn sp-go" id="btn-enter" autofocus>Open the dashboard &rarr;</button>
+</div>
 <header class="top">
   <div class="bar">
     <div class="brand"><div class="mark">₹</div>
-      <div>AI Finance Controller</div></div>
+      <div>Razor Recon AI</div></div>
     <div class="spacer"></div>
     <span class="policy-chip" title="Demo Merchant Policy — not Razorpay's actual terms. Every fee, tax, settlement-cycle and bank-lag figure on this screen comes from a synthetic policy file authored for this project.">Demo policy</span>
     <label style="font-size:12px;color:var(--ink-3)">Run</label>
@@ -249,7 +377,9 @@ const S = {tab:"dashboard", runs:[], run:null, metrics:null, settlements:[], exc
            filters:{status:"", tier:"", severity:"", kind:"", q:""}, busy:false, toast:null,
            agent:{status:null, turns:[], asking:false, draft:"", error:null},
            data:{tables:[], table:null, page:null, offset:0, raw:false, busy:false},
-           forecast:null, fc:{horizon:15, busy:false}};
+           forecast:null, fc:{horizon:15, busy:false}, tax:null,
+           xai:{open:false, turns:[], asking:false, error:null},
+           tx:{open:{}}};
 
 const $  = (s,r=document)=>r.querySelector(s);
 const el = (t,a={},...c)=>{const n=document.createElement(t);
@@ -307,6 +437,8 @@ async function selectRun(rid){
   S.metrics=m; S.settlements=st.settlements; S.exceptions=ex.exceptions; S.sellers=se.sellers;
   S.forecast=null;
   try{ S.forecast=await api(`/api/runs/${rid}/forecast?horizon=${S.fc.horizon}`); }catch(e){}
+  S.tax=null; S.xai.turns=[]; S.xai.error=null; S.tx.open={};
+  try{ S.tax=await api(`/api/runs/${rid}/tax`); }catch(e){}
   S.detail=null; S.sid=null; S.busy=false;
   // the conversation belongs to the run, so switching runs switches transcripts
   S.agent.turns=[]; S.agent.error=null;
@@ -1292,6 +1424,277 @@ function viewCash(){
     head, pipeCard, awaitedCard, payoutCard, overdueCard, basis);
 }
 
+/* ============================ TAX CREDIT PAGE ========================== */
+/* Input tax credit on gateway fees, across three independent sources.
+   Delta-1 already proves the merchant was CHARGED the right GST. This page asks
+   the different question: can any of it actually be claimed back. It is two
+   comparisons, kept apart on purpose --
+     charged vs booked   the merchant's own posting        (their accountant)
+     booked vs filed     what GSTR-2B will actually allow  (their supplier)
+   Adding them together would produce one number nobody can act on. */
+
+const TAX_TONE = {
+  MATCHED:"a", NOT_FILED:"c", SPLIT_MISMATCH:"c", AMOUNT_MISMATCH:"b",
+  PERIOD_MISMATCH:"b", ITC_BLOCKED:"n",
+};
+const CLAIM_TONE = {CLAIMABLE:"a", DEFERRED:"b", AT_RISK:"c", BLOCKED:"n"};
+const TAX_LABEL = {
+  MATCHED:"Matched", NOT_FILED:"Not filed", AMOUNT_MISMATCH:"Amount mismatch",
+  SPLIT_MISMATCH:"Wrong tax heads", PERIOD_MISMATCH:"Filed late", ITC_BLOCKED:"Not creditable",
+};
+
+function viewTax(){
+  const d=S.tax;
+  if(!d) return el("div",{class:"empty"},"No tax data for this run.");
+  if(!d.installed) return el("div",{class:"card"},
+    el("h3",{},"Tax credit"),
+    el("div",{class:"body"},
+      el("p",{},el("b",{},"The GSTR-2B table is not installed on this database.")),
+      el("p",{},"It ships separately from the destructive schema so it can be added "+
+                "to a live database without touching a row:"),
+      el("pre",{class:"mono",style:"background:var(--bg-2);border:1px solid var(--line);"+
+        "border-radius:8px;padding:10px 12px;overflow-x:auto"},
+        'psql "$DATABASE_URL" -f db/tax.sql\nmake evaluation-batch'),
+      el("p",{},"The rest of the application is unaffected.")));
+
+  const t=d.totals;
+  const stat=(k,v,sub,cls)=>el("div",{class:"stat "+(cls||"")},
+    el("div",{class:"k"},k), el("div",{class:"v"},v), sub&&el("div",{class:"d"},sub));
+
+  /* ------------------------------------------------------------ headline -- */
+  const head=el("div",{class:"card"},
+    el("h3",{},"Input tax credit",
+      el("span",{class:"sub"},
+        `${t.settlements} settlements · ${d.place_of_supply} · GSTR-2B `+
+        `${d.tax_policy_version}·${d.tax_config_hash}`),
+      el("span",{class:"spacer",style:"flex:1"}),
+      el("span",{class:"chip"},"synthetic feed")),
+    el("div",{class:"grid",style:"grid-template-columns:repeat(4,1fr);gap:12px;padding:0 16px 12px"},
+      stat("GST charged", rupees(t.charged_tax_paise), "on gateway fees"),
+      stat("At risk", rupees(t.at_risk_paise),
+        `${t.filing_exceptions} filing exception${t.filing_exceptions===1?"":"s"}`,
+        t.at_risk_paise?"bad":""),
+      stat("Deferred", rupees(t.deferred_paise), "claimable, later period"),
+      stat("Not creditable", rupees(t.blocked_paise), "the portal says no")));
+
+  /* --------------------------------------------------- the two comparisons -- */
+  /* Side by side, labelled, with the totals that belong to each. This is the
+     whole point of the page: two questions, two culprits, two remedies. */
+  const leg=(title, who, rows)=>el("div",{class:"card"},
+    el("h3",{},title, el("span",{class:"sub"},who)),
+    el("div",{class:"body"}, el("dl",{class:"kv"}, ...rows)));
+
+  const legs=el("div",{class:"grid",style:"grid-template-columns:1fr 1fr"},
+    leg("Charged vs booked", "the merchant's own posting", [
+        el("dt",{},"Charged on settlements"), el("dd",{}, rupees(t.charged_tax_paise)),
+        el("dt",{},"Posted to INPUT_GST"), el("dd",{}, rupees(t.booked_tax_paise)),
+        el("dt",{},"Settlements disagreeing"), el("dd",{}, String(t.books_exceptions)),
+        el("dt",{},"Over-recorded"), el("dd",{}, rupees(t.books_over_paise)),
+        el("dt",{},"Under-recorded"), el("dd",{}, rupees(t.books_under_paise))]),
+    leg("Booked vs filed", "what GSTR-2B will allow", [
+        el("dt",{},"Posted to INPUT_GST"), el("dd",{}, rupees(t.booked_tax_paise)),
+        el("dt",{},"Filed and claimable"), el("dd",{}, rupees(t.claimable_tax_paise)),
+        el("dt",{},"At risk"), el("dd",{}, rupees(t.at_risk_paise)),
+        el("dt",{},"Deferred to a later period"), el("dd",{}, rupees(t.deferred_paise)),
+        el("dt",{},"Both legs clean"), el("dd",{},
+          `${t.matched} of ${t.settlements} · ${pct(t.match_rate_pct)}`)]));
+
+  /* ------------------------------------------------------ by return period -- */
+  const periods=el("div",{class:"card"},
+    el("h3",{},"By return period"),
+    el("div",{class:"tablewrap"}, el("table",{},
+      el("thead",{}, el("tr",{},
+        el("th",{},"Period"), el("th",{},"Settlements"),
+        el("th",{style:"text-align:right"},"Charged"),
+        el("th",{style:"text-align:right"},"Booked"),
+        el("th",{style:"text-align:right"},"Claimable"),
+        el("th",{style:"text-align:right"},"At risk"),
+        el("th",{style:"text-align:right"},"Deferred"),
+        el("th",{style:"text-align:right"},"Books gap"))),
+      el("tbody",{}, ...d.periods.map(p=>el("tr",{},
+        el("td",{}, el("b",{},p.return_period)),
+        el("td",{}, String(p.settlements)),
+        el("td",{class:"num"}, rupees(p.charged_tax_paise)),
+        el("td",{class:"num"}, rupees(p.booked_tax_paise)),
+        el("td",{class:"num"}, rupees(p.claimable_tax_paise)),
+        el("td",{class:"num"}, p.at_risk_paise
+          ? el("b",{style:"color:var(--red)"}, rupees(p.at_risk_paise)) : "—"),
+        el("td",{class:"num"}, p.deferred_paise ? rupees(p.deferred_paise) : "—"),
+        el("td",{class:"num"}, p.books_abs_paise ? rupees(p.books_abs_paise) : "—")))))));
+
+  /* ----------------------------------------------------------- the lines -- */
+  /* One settlement per block. Clean lines collapse to their header; anything
+     with a finding opens expanded, because that is what someone came to read. */
+  const EV_TITLE={settlement:"Charged", ledger:"Booked", gstr2b:"Claimable"};
+  const blocks=d.lines.map(l=>{
+    const exception = l.status!=="MATCHED" || l.books_status==="MISMATCH";
+    const open = S.tx.open[l.settlement_id] ?? exception;
+    const tone = l.at_risk_paise ? "c"
+               : l.claim_state==="DEFERRED" ? "b"
+               : l.claim_state==="BLOCKED" ? "n"
+               : l.books_status==="MISMATCH" ? "b" : "a";
+
+    const amt=(k,v,cls)=>el("div",{class:"tx-amt"},
+      el("div",{class:"k"},k), el("div",{class:"v "+(cls||"")}, v));
+
+    const top=el("div",{class:"tx-top"},
+      el("button",{class:"tx-sid", title:"Open this settlement",
+        onclick:()=>openSettlement(l.settlement_id)}, l.settlement_id),
+      el("span",{class:"tx-date"}, l.settlement_date),
+      el("span",{class:"tx-chips"},
+        el("span",{class:"chip "+(TAX_TONE[l.status]||"n")}, TAX_LABEL[l.status]||l.status),
+        el("span",{class:"chip "+(CLAIM_TONE[l.claim_state]||"n")}, l.claim_state),
+        l.books_status==="MISMATCH"
+          ? el("span",{class:"chip b"},"books disagree") : null),
+      el("div",{class:"tx-amts"},
+        amt("Invoice", l.invoice_no || "— none —"),
+        amt("Filed in", l.invoice_period
+              ? (l.invoice_period!==l.return_period ? l.invoice_period+" ⚑" : l.invoice_period)
+              : "—"),
+        amt("GST charged", rupees(l.charged_tax_paise)),
+        amt("At risk", l.at_risk_paise ? rupees(l.at_risk_paise) : "—",
+            l.at_risk_paise ? "risk" : "")),
+      el("button",{class:"tx-toggle", "aria-expanded":String(open),
+        onclick:()=>{ S.tx.open[l.settlement_id]=!open; render(); }},
+        open ? "Hide detail ▲" : "Show detail ▼"));
+
+    if(!open) return el("div",{class:"tx-item","data-tone":tone}, top);
+
+    const find=el("div",{class:"tx-find"},
+      el("div",{class:"lbl"},"Filing"), el("div",{class:"txt"}, l.finding));
+    if(l.books_status==="MISMATCH"){
+      find.appendChild(el("div",{class:"lbl"},"Books"));
+      find.appendChild(el("div",{class:"txt"}, l.books_finding));
+    }
+    return el("div",{class:"tx-item","data-tone":tone}, top,
+      el("div",{class:"tx-body"}, find,
+        el("div",{class:"tx-ev"}, ...l.evidence.map(e=>el("div",{},
+          el("div",{class:"s"}, EV_TITLE[e.source]||e.source),
+          el("div",{class:"a"}, rupees(e.amount_paise)),
+          el("div",{class:"l"}, e.label)))),
+        el("div",{class:"tx-rule"}, l.rule)));
+  });
+
+  const lines=el("div",{class:"card"},
+    el("h3",{},"Every settlement, both verdicts",
+      el("span",{class:"sub"},`${d.lines.length} settlements · worst first`),
+      el("span",{class:"spacer",style:"flex:1"}),
+      el("button",{class:"btn",style:"padding:4px 10px;font-size:12px",
+        onclick:()=>{ const anyClosed=d.lines.some(l=>
+            !(S.tx.open[l.settlement_id] ?? (l.status!=="MATCHED"||l.books_status==="MISMATCH")));
+          for(const l of d.lines) S.tx.open[l.settlement_id]=anyClosed; render(); }},
+        "Expand / collapse all")),
+    el("div",{class:"tx-list"}, ...blocks));
+
+  /* Provenance, not prose. One line: which registry decided this, and the
+     standing notice that the GSTR-2B feed is synthetic. The reasoning behind the
+     rules lives in the README, not on the screen. */
+  const basis=el("div",{class:"card"},
+    el("div",{class:"body",style:"font-size:12.5px;color:var(--ink-3);line-height:1.6"},
+      el("span",{class:"mono"},`TAX ${d.tax_policy_version}·${d.tax_config_hash}`),
+      " · supplier ", el("span",{class:"mono"},d.supplier_gstin),
+      " · merchant ", el("span",{class:"mono"},d.merchant_gstin),
+      " · ", d.place_of_supply,
+      el("div",{style:"margin-top:6px"}, d.disclaimer)));
+
+  return el("div",{class:"grid",style:"gap:18px"},
+    head, legs, periods, lines, basis, xaiPanel());
+}
+
+/* ===================== EXPLAINABILITY PANEL (XAI) ====================== */
+/* The same read-only agent as the Ask tab, in a small box scoped to this page.
+   It has its own transcript so opening it never disturbs the main conversation,
+   and it can do exactly as little: read tools only, no path to a write. */
+
+const XAI_SEEDS = [
+  "Which settlements put input tax credit at risk, and why?",
+  "What is the difference between the books gap and the filing gap here?",
+  "Is the deferred credit actually lost?",
+  "What should I do first, and who do I have to talk to?",
+];
+
+const XAI_SCOPE = "About input tax credit on this run: ";
+
+async function askXai(q){
+  q=(q||"").trim();
+  if(!q || S.xai.asking || !S.run) return;
+  S.xai.asking=true; S.xai.error=null; render();
+  try{
+    const r=await api(`/api/runs/${S.run.run_id}/ask`, {method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({question: XAI_SCOPE + q})});
+    S.xai.turns.push({question:q, answer:r.answer, citations:r.citations,
+      unsupported_references:r.unsupported_references, model:r.model,
+      tool_call_count:r.tool_call_count, elapsed_seconds:r.elapsed_seconds});
+  }catch(e){ S.xai.error=e.message; }
+  S.xai.asking=false; render();
+  const sc=document.querySelector(".xai-body"); if(sc) sc.scrollTop=sc.scrollHeight;
+}
+
+function xaiPanel(){
+  const st=S.agent.status||{};
+  const wrap=el("div",{});
+
+  const fab=el("button",{class:"xai-fab", title:"Explain this page",
+    "aria-label":"Explain this page", "aria-expanded":String(!!S.xai.open),
+    onclick:()=>{S.xai.open=!S.xai.open; render();}},
+    el("span",{html:S.xai.open
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+      : '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-3.8-.8L3 21l1.9-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M9.6 9.4a2.4 2.4 0 0 1 4.7.8c0 1.6-2.3 2.4-2.3 2.4"/><path d="M12 16.2h.01"/></svg>'}),
+    S.xai.turns.length && !S.xai.open
+      ? el("span",{class:"dot"}, String(S.xai.turns.length)) : null);
+  wrap.appendChild(fab);
+  if(!S.xai.open) return wrap;
+
+  const body=el("div",{class:"xai-body"});
+  if(!st.configured){
+    body.appendChild(el("div",{class:"xai-a"},
+      el("p",{},el("b",{},"Not configured.")),
+      el("p",{},`Set ${(st.expected_env||["GEMINI_API_KEY"])[0]} and restart the API.`)));
+  } else if(!S.xai.turns.length && !S.xai.asking){
+    body.appendChild(el("div",{class:"xai-seed"},
+      ...XAI_SEEDS.map(q=>el("button",{onclick:()=>askXai(q)}, q))));
+  }
+  for(const t of S.xai.turns){
+    body.appendChild(el("div",{class:"xai-q"}, t.question));
+    const a=el("div",{class:"xai-a"}, ...paragraphs(t.answer));
+    if((t.unsupported_references||[]).length){
+      a.appendChild(el("div",{class:"xai-warn"},
+        el("b",{},"Unverified: "), t.unsupported_references.join(", "),
+        " — not in any record the agent read."));
+    }
+    if((t.citations||[]).length){
+      a.appendChild(el("div",{class:"xai-cites"},
+        ...t.citations.slice(0,8).map(c=>el("button",{
+          onclick:()=>{S.xai.open=false; jumpToCitation(c);}}, c))));
+    }
+    body.appendChild(a);
+  }
+  if(S.xai.asking) body.appendChild(el("div",{class:"xai-a"},
+    el("span",{class:"spin"})," reading the matched lines…"));
+  if(S.xai.error) body.appendChild(el("div",{class:"xai-warn"}, S.xai.error));
+
+  const input=el("input",{type:"text", placeholder:"Ask about the tax position…",
+    disabled:S.xai.asking||!st.configured?"":null,
+    onkeydown:e=>{ if(e.key==="Enter"){ const v=e.target.value; e.target.value=""; askXai(v); } }});
+
+  wrap.appendChild(el("div",{class:"xai-panel", role:"dialog",
+      "aria-label":"Explain the tax position"},
+    el("div",{class:"xai-head"},
+      el("b",{},"Explain this page"),
+      el("span",{class:"sub"}, st.configured ? (st.label||"agent") : "not configured"),
+      el("button",{class:"xai-x", "aria-label":"Close",
+        onclick:()=>{S.xai.open=false; render();}}, "\u00d7")),
+    body,
+    el("div",{class:"xai-note"}, "Read-only · scoped to input tax credit"),
+    el("div",{class:"xai-foot"}, input,
+      el("button",{class:"btn primary", style:"padding:6px 12px;font-size:12.5px",
+        disabled:S.xai.asking||!st.configured?"":null,
+        onclick:e=>{ const i=e.target.closest(".xai-panel").querySelector("input");
+                     const v=i.value; i.value=""; askXai(v); }}, "Ask"))));
+  return wrap;
+}
+
 /* ============================ DATA BROWSER ============================= */
 /* Every table in the schema, scoped to the run you are looking at, with live
    row counts. Read-only: there is no write path from this tab, and the table
@@ -1491,8 +1894,9 @@ function viewAsk(){
 
 /* ================================ RENDER =============================== */
 const TABS=[["dashboard","Dashboard"],["settlements","Settlements"],["detail","Settlement detail"],
-  ["exceptions","Exceptions"],["cash","Cash position"],["sellers","Seller payouts"],
-  ["trace","Trace money"],["data","Data"],["ask","Ask the agent"]];
+  ["exceptions","Exceptions"],["cash","Cash position"],["tax","Tax credit"],
+  ["sellers","Seller payouts"],["trace","Trace money"],["data","Data"],
+  ["ask","Ask the agent"]];
 function render(){
   const nav=$("#tabs"); nav.innerHTML="";
   for(const [k,label] of TABS){
@@ -1514,12 +1918,35 @@ function render(){
   } else {
     const v={dashboard:viewDashboard,settlements:viewSettlements,detail:viewDetail,
       exceptions:viewExceptions,sellers:viewSellers,trace:viewTrace,ask:viewAsk,
-      data:viewData,cash:viewCash}[S.tab];
+      data:viewData,cash:viewCash,tax:viewTax}[S.tab];
     app.appendChild(v());
   }
   document.querySelectorAll(".toast").forEach(n=>n.remove());
   if(S.toast) document.body.appendChild(el("div",{class:"toast"},S.toast));
 }
+
+
+/* ------------------------------------------------------- the title screen */
+/* Deliberately in-memory only: a reload shows it again, which is what you want
+   opening a demo. Nothing behind it is blocked -- boot() runs underneath, so the
+   dashboard is already loaded by the time anyone clicks through. */
+function enterApp(){
+  const sp=$("#splash");
+  if(!sp || sp.classList.contains("leaving")) return;
+  sp.classList.add("leaving");
+  const done=()=>{ sp.remove(); const t=document.querySelector("nav.tabs button"); if(t) t.focus(); };
+  sp.addEventListener("animationend", done, {once:true});
+  setTimeout(done, 400);                      // reduced-motion: no animationend
+}
+(function(){
+  const b=$("#btn-enter");
+  if(b) b.addEventListener("click", enterApp);
+  // Enter or Space anywhere on the title screen goes through too
+  document.addEventListener("keydown", e=>{
+    if(!$("#splash")) return;
+    if(e.key==="Enter" || e.key===" "){ e.preventDefault(); enterApp(); }
+  });
+})();
 
 /* ---------------------------------------------------------------- events */
 $("#runsel").addEventListener("change", e=>selectRun(e.target.value));

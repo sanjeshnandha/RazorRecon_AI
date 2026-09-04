@@ -686,6 +686,119 @@ PIPELINE = [
 ]
 
 
+
+# =============================================================================
+# GSTR-2B: the third source of truth for input tax credit
+# =============================================================================
+# STRICTLY ADDITIVE. Not one settled row above is touched -- these are new rows
+# in a new table (tax_invoices, db/tax.sql), and nothing in the reconciliation
+# path reads them. The 22 scenarios score exactly as they did before.
+#
+# One gateway tax invoice per settlement, which is how a payment gateway
+# actually bills: the fee is the taxable value and the GST on it is the credit
+# the merchant wants back. The invoice then has to appear in the merchant's
+# GSTR-2B -- the statement the GST portal auto-drafts each month from what
+# SUPPLIERS filed -- before a rupee of it is claimable.
+#
+# Five defects are planted among the 22, one per failure mode a real ITC
+# reconciliation hits. They live here rather than in ground_truth_anomalies on
+# purpose: that table feeds the engine's honesty metrics and the "19 planted
+# anomalies" the dashboard reports, and tax findings are a different question
+# scored on a different axis. Adding them there would silently move numbers the
+# whole evaluation rests on.
+#
+# EVERY VALUE IS SYNTHETIC. The GSTINs are placeholders containing "DEMO".
+
+TAX_SUPPLIER_GSTIN = "29DEMOP0000D1Z5"
+
+
+def _tax_invoice(no, settlement_id, invoice_date, return_period, taxable, tax,
+                 heads="CGST+SGST", eligible=True, reason=None, filed=None):
+    """One GSTR-2B line. `tax` is the total; intra-state splits it CGST/SGST."""
+    cgst = sgst = igst = 0
+    if heads == "IGST":
+        igst = tax
+    else:
+        # An odd total splits with the extra paise on CGST, which is how a
+        # supplier's own system would round it.
+        cgst, sgst = tax - tax // 2, tax // 2
+    return {"invoice_no": no, "settlement_id": settlement_id,
+            "invoice_date": invoice_date, "return_period": return_period,
+            "supplier_gstin": TAX_SUPPLIER_GSTIN, "document_type": "INVOICE",
+            "taxable_value_paise": taxable, "cgst_paise": cgst, "sgst_paise": sgst,
+            "igst_paise": igst, "itc_eligible": eligible,
+            "ineligible_reason": reason, "filed_at": filed or return_period + "-11"}
+
+
+# (settlement_id, invoice_date, fee_paise, tax_paise) -- the clean case, taken
+# from the settlements the scenarios already author. Kept as a literal rather
+# than derived so this file stays readable as data.
+_TAX_CLEAN = [
+    ("EV_01", "2026-02-05", 28400, 5112), ("EV_02", "2026-02-07", 18600, 3348),
+    ("EV_03", "2026-02-10", 18000, 3240), ("EV_04", "2026-02-11", 25000, 4500),
+    ("EV_05", "2026-02-13", 32486, 5847), ("EV_06", "2026-02-17", 24000, 4320),
+    ("EV_07", "2026-02-18", 16000, 2880), ("EV_08", "2026-02-19", 14000, 2520),
+    ("EV_09", "2026-02-21", 19000, 3420), ("EV_10", "2026-02-24", 28000, 5040),
+    ("EV_11", "2026-02-25", 28500, 5130), ("EV_12", "2026-02-26", 14000, 2520),
+    ("EV_13", "2026-02-27",  9625, 1733), ("EV_14", "2026-03-03", 22000, 3960),
+    ("EV_15", "2026-03-05", 20000, 3600), ("EV_16", "2026-03-06", 17000, 3060),
+    ("EV_17", "2026-03-07", 25000, 4500), ("EV_18", "2026-03-10", 24000, 4320),
+    ("EV_19", "2026-03-11", 19000, 3420), ("EV_20", "2026-03-13", 18000, 3240),
+    ("EV_21", "2026-03-17", 10000, 1800), ("EV_22", "2026-03-18", 10000, 1800),
+]
+
+# settlement_id -> what the matcher must conclude, and why. Asserted in
+# tests/test_taxmatch.py, exported to CSV for evaluators.
+TAX_EXPECTATIONS = {
+    "EV_07": {"status": "NOT_FILED", "claim_state": "AT_RISK", "at_risk_paise": 2880,
+              "note": "The supplier never filed this invoice, so it appears in no "
+                      "return period at all. Rs 28.80 sits in INPUT_GST that the "
+                      "merchant cannot claim until they chase it."},
+    "EV_11": {"status": "AMOUNT_MISMATCH", "claim_state": "AT_RISK", "at_risk_paise": 3,
+              "note": "The supplier rounds GST once per invoice; the settlement "
+                      "rounds it per line. Three paise, every invoice, forever."},
+    "EV_15": {"status": "SPLIT_MISMATCH", "claim_state": "AT_RISK", "at_risk_paise": 3600,
+              "note": "Filed as IGST when both parties are in state 29. The amount "
+                      "is correct and the credit still will not offset, because it "
+                      "is sitting under the wrong heads. Only the supplier can amend."},
+    "EV_20": {"status": "PERIOD_MISMATCH", "claim_state": "DEFERRED", "at_risk_paise": 0,
+              "note": "Filed late: a March settlement whose invoice lands in the "
+                      "April GSTR-2B. Inside the claim window, so this is cash "
+                      "deferred by a month, not cash lost. A naive check calls it "
+                      "missing -- this is the trap in the tax batch."},
+    "EV_03": {"status": "ITC_BLOCKED", "claim_state": "BLOCKED", "at_risk_paise": 3240,
+              "note": "Every rupee matches and the portal still marks the line "
+                      "ineligible. Nothing to fix and nothing to chase: it should "
+                      "never have been booked as recoverable in the first place."},
+}
+
+
+def _build_tax_invoices():
+    out, n = [], 0
+    for sid, day, fee, tax in _TAX_CLEAN:
+        n += 1
+        no = f"DGS/2026/{n:04d}"
+        period = day[:7]
+        if sid == "EV_07":
+            continue                                   # never filed
+        if sid == "EV_11":
+            out.append(_tax_invoice(no, sid, day, period, fee, tax - 3))
+        elif sid == "EV_15":
+            out.append(_tax_invoice(no, sid, day, period, fee, tax, heads="IGST"))
+        elif sid == "EV_20":
+            out.append(_tax_invoice(no, sid, day, "2026-04", fee, tax,
+                                    filed="2026-04-14"))
+        elif sid == "EV_03":
+            out.append(_tax_invoice(no, sid, day, period, fee, tax, eligible=False,
+                                    reason="Blocked credit under section 17(5)"))
+        else:
+            out.append(_tax_invoice(no, sid, day, period, fee, tax))
+    return out
+
+
+TAX_INVOICES = _build_tax_invoices()
+
+
 def main() -> None:
     doc = {
         "batch_id": "EVALUATION_BATCH_V1",
@@ -720,6 +833,9 @@ def main() -> None:
           f"{sum(1 for s in SCENARIOS if s['allocations'])} settlements")
     print(f"  pipeline: {pipe_pay} captures over {len(PIPELINE)} days "
           f"({pipe_amt / 100:,.2f} rupees), {pipe_alloc} allocations pending payout")
+    periods = sorted({i["return_period"] for i in TAX_INVOICES})
+    print(f"  GSTR-2B: {len(TAX_INVOICES)} invoices across {len(periods)} return "
+          f"periods {periods}, {len(TAX_EXPECTATIONS)} planted tax findings")
 
 
 if __name__ == "__main__":

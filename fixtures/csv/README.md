@@ -33,10 +33,35 @@ Everything else is the data those expectations are about.
 | `bank_transactions.csv` | 21 | 22 settlements, 21 credits: one is missing on purpose |
 | `ledger_entries.csv` | 226 | double-entry postings, including one duplicated and one absent |
 | `money_edges.csv` | 582 | the lineage graph behind Trace Money |
+| `tax_invoices.csv` | 21 | the synthetic GSTR-2B feed: one gateway tax invoice per settlement, minus the one never filed |
 | `ground_truth_anomalies.csv` | 19 | what was planted, and what should be found |
 
 **395 financial records** across payments, refunds, allocations, transfers,
-adjustments, settlement items, bank lines and ledger postings.
+adjustments, settlement items, bank lines and ledger postings. `tax_invoices.csv`
+is a separate, third-party source and is deliberately not counted among them.
+
+## The tax feed
+
+`tax_invoices.csv` is the merchant's **GSTR-2B** — the statement the GST portal
+auto-drafts each month from what SUPPLIERS filed. It is the third answer to "how
+much input tax credit is claimable", independent of both the settlement report
+and the merchant's own books, and it is the only one that decides whether the
+money is actually recoverable.
+
+Five findings are planted in it, one per real failure mode: `EV_07` never filed,
+`EV_11` off by 3 paise (the supplier rounds per invoice, the settlement per
+line), `EV_15` filed under IGST when both parties are in the same state, `EV_20`
+filed a period late, and `EV_03` matching perfectly but marked ineligible by the
+portal. `EV_20` is the trap — credit *deferred* by a month, not credit *lost*.
+
+Those five are **not** in `ground_truth_anomalies.csv`, on purpose: that file
+feeds the engine's four-delta honesty metrics, and adding to it would move
+numbers the whole evaluation rests on. The tax expectations live in
+`fixtures/authoring.py::TAX_EXPECTATIONS` and are scored by `tests/test_taxmatch.py`.
+
+The feed is **synthetic**, authored for this project. It is not real filing data
+and nothing in it is tax advice; the GSTINs contain "DEMO" so they cannot be
+mistaken for real registrations.
 
 ## The pipeline tail
 
@@ -58,7 +83,7 @@ No column is ever a float — that is deliberate, and it is why the arithmetic i
 exact. Divide by 100 for display only.
 
 **`dataset_id` has been dropped from every file.** It is the same constant on all
-1,118 rows and carries no information here; the batch is one dataset.
+1,139 rows and carries no information here; the batch is one dataset.
 
 ## Regenerating
 

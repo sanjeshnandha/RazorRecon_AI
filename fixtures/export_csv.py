@@ -40,6 +40,9 @@ TABLES = [
     ("bank_transactions", "bank_transaction_id"),
     ("ledger_entries", "ledger_entry_id"),
     ("money_edges", "src_id, dst_id, edge_kind"),
+    # The GSTR-2B feed. Optional: an install that has not run db/tax.sql simply
+    # exports one file fewer.
+    ("tax_invoices", "invoice_no"),
     ("ground_truth_anomalies", "anomaly_id"),
 ]
 

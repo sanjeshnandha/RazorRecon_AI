@@ -1,5 +1,5 @@
 -- =============================================================================
--- AI Finance Controller -- P0 schema (PostgreSQL 15+)
+-- Razor Recon AI -- P0 schema (PostgreSQL 15+)
 --
 -- HARD RULES ENCODED HERE:
 --   * all money is BIGINT paise, column names end in _paise. No float/numeric.

@@ -1,0 +1,42 @@
+# =============================================================================
+# Demo Merchant TAX registry  --  input tax credit (ITC) reconciliation
+# =============================================================================
+# A SEPARATE registry from policy/policy.yaml, deliberately.
+#
+# The reconciliation engine's config_hash is computed over policy.yaml alone and
+# is stamped on every run that has ever been made. Adding tax keys there would
+# change that hash and silently invalidate every prior run's provenance. So the
+# tax matcher carries its own versioned registry with its own hash, and the four
+# deltas are untouched by anything in this file.
+#
+# EVERY VALUE HERE IS SYNTHETIC. The GSTINs are deliberately malformed-looking
+# placeholders containing "DEMO" so they can never be mistaken for real
+# registrations. This is not Razorpay's tax position and not tax advice.
+# =============================================================================
+version: "1.0.0"
+
+# --- TAX.PARTIES
+supplier_gstin: "29DEMOP0000D1Z5"      # the payment gateway, as the supplier of services
+supplier_legal_name: "Demo Gateway Services Private Limited"
+supplier_state_code: "29"
+merchant_gstin: "29DEMOM0000M1Z9"
+merchant_legal_name: "Demo Merchant Private Limited"
+merchant_state_code: "29"
+
+# --- TAX.RATE
+# Mirrors gst_on_fee_bps in the core registry. Stated again here so the tax
+# matcher never reaches into the reconciliation policy at runtime -- the two
+# registries are versioned independently and a drift between them is itself
+# something the matcher reports rather than papers over.
+gst_on_fee_bps: 1800
+
+# --- TAX.MATCH
+# GSTR-2B is filed by the supplier from their own books. A one-paise difference
+# is a rounding basis disagreement, not a dispute; anything above it is real.
+amount_tolerance_paise: 1
+
+# --- TAX.CLAIM
+# An invoice that lands in a LATER return period than the settlement is not lost
+# credit -- it is credit claimable in that later period. Beyond this many
+# periods it is a genuine problem worth escalating.
+claim_window_return_periods: 1

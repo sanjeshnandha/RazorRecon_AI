@@ -23,6 +23,9 @@ than no log.
 
 ## Current state
 
+**Name.** **Razor Recon AI**. The internal module, package and database are still
+`finctl` — an identifier, not the product name.
+
 **What it is.** A deterministic settlement reconciliation engine. It recomputes
 what a settlement *should* have paid from a versioned policy registry, compares
 that against what the report claims, what the bank actually credited, what the
@@ -34,13 +37,14 @@ the results without being able to change them.
 Six dependencies: `psycopg`, `fastapi`, `uvicorn`, `PyYAML`, `pydantic`, `pytest`.
 No ORM, no npm, no vendor AI SDK. All money is `BIGINT` paise — never floats.
 
-**Tests: 236, all passing.**
+**Tests: 271, all passing.**
 
 | file | n | covers |
 |---|---:|---|
 | `test_evaluation_batch.py` | 64 | the static batch: every scenario's stated delta, tier and exception, plus the CSV export |
 | `test_agent.py` | 41 | agent tools, scoping, injection refusal, citation guard, storage |
 | `test_forecast.py` | 34 | the cash forecaster: due dates, roll-up, provenance, line detail, the agent tool |
+| `test_taxmatch.py` | 34 | input tax credit: isolation from the four deltas, the two verdicts, the five planted findings |
 | `test_golden.py` | 30 | the 19 golden scenarios |
 | `test_append.py` | 19 | append mode: tiling, id sequences, late refunds, clean-append zero |
 | `test_browse.py` | 14 | the Data tab: catalogue registry, injection, scoping, paging |
@@ -73,25 +77,26 @@ make tick                                    # +10 settlements, re-reconcile
 make evaluation-batch                        # load the fixed 22-scenario batch
 make evaluation-csv                          # export it to fixtures/csv/
 make agent-schema                            # add the agent table to a LIVE db
+make tax-schema                              # add the GSTR-2B table to a LIVE db
 make db-summary / make db-shell              # inspect the database
-make test                                    # 236 tests
+make test                                    # 271 tests
 ```
 
 **Layout.**
 
 ```
-engine/       14 modules — the deterministic reconciliation engine (+ forecast.py)
+engine/       15 modules — the deterministic reconciliation engine (+ forecast.py, taxmatch.py)
 generator/    seeded dataset generation + append mode (origin.py, append.py are new)
 fixtures/     the static evaluation batch: authoring.py, loader.py, evaluation_batch.json
               plus export_csv.py and csv/ — the same batch as 15 flat files
 agent/        the investigation agent: llm.py, tools.py, investigator.py, store.py
 api/          FastAPI app + browse.py (Data tab) + the single-file SPA in static/
-db/           schema.sql (destructive), indexes.sql, agent.sql (idempotent)
-tests/        236 tests
+db/           schema.sql (destructive), indexes.sql, agent.sql + tax.sql (idempotent)
+tests/        271 tests
 ```
 
 **UI tabs.** Dashboard · Settlements · Settlement detail · Exceptions ·
-**Cash position** · Seller payouts · Trace money · Data · Ask the agent
+Cash position · **Tax credit** · Seller payouts · Trace money · Data · Ask the agent
 
 **Dashboard cards.** Run summary · Δ waterfall · Ground-truth scoring ·
 Matcher guards · Exceptions by type
@@ -103,6 +108,279 @@ these are not Razorpay's real terms, so that notice stays.
 
 **Header buttons.** Generate dataset · Simulate next cycle · Evaluation batch ·
 Run reconciliation
+
+---
+
+## 2026-09-04 — Tax credit page: commentary removed
+
+**What changed.** The page explained itself in prose. It now states what it is and
+shows numbers, per the standing UI copy policy.
+
+**Removed.**
+
+- The two footnote paragraphs under *Charged vs booked* and *Booked vs filed* —
+  three lines each of generic explanation, identical on every run.
+- The *How this was matched* card: four bulleted assumptions plus a paragraph on
+  why the forecast is derived. Replaced by one provenance line — registry version
+  and hash, the two GSTINs, place of supply — and the synthetic-feed notice, which
+  stays because it is an honesty commitment, not commentary.
+- Explanatory sub-lines: *"a claim is filed per period, not per settlement"*,
+  *"findings open, clean lines collapsed"*.
+- The XAI panel's two-sentence footer, now `Read-only · scoped to input tax credit`.
+
+**Shortened, in `engine/taxmatch.py`.** The findings carried advice that repeated
+on every row of a kind — *"Chase the supplier before the claim deadline"*, *"The
+supplier must amend"*, *"This is not an error to fix"*. They now state the finding
+and stop:
+
+| before | after |
+|---|---|
+| No GSTR-2B line for this settlement. ₹28.80 of GST was charged but the supplier has not filed it, so none of it can be claimed. Chase the supplier before the claim deadline. | ₹28.80 charged, nothing filed. Not claimable. |
+| Charged, booked and filed all agree, under the right heads, in the right return period. Fully claimable. | Charged, booked and filed agree. Fully claimable. |
+
+Evidence labels were a legend printed on every block, so they identify the source
+rather than describing it: *"charged on the settlement report"* → `settlement
+report`, *"posted to INPUT_GST in the merchant's books"* → `INPUT_GST postings`,
+*"filed in 2026-03 under IGST"* → `2026-03 · IGST`.
+
+**What was deliberately kept.** The `synthetic feed` chip, the disclaimer line,
+and the short identifying subtitles (*the merchant's own posting*, *what GSTR-2B
+will allow*) — four words that name a comparison are a label, not a paragraph.
+The reasoning behind the rules lives in the README, which is where someone goes
+to ask *why*; the screen answers *what*.
+
+**Files.** `engine/taxmatch.py` (finding and evidence-label strings),
+`web/index.html` → `api/static/index.html` rebuilt.
+
+**How it was verified.** Rendered in Chromium: console clean, zero horizontal
+overflow, page 4,059px tall against roughly 4,700 before. 271 tests passing —
+the tests assert findings are non-empty, never their wording, so shortening them
+is safe by construction.
+
+---
+
+## 2026-09-04 — Tax credit page: one settlement, one block
+
+**The problem.** The settlement list was a table where each settlement occupied a
+data row *and* a detail row. Nothing marked where one settlement ended and the
+next began, so 22 of them ran together into a wall — the finding for `EV_15` sat
+directly against the header row for `EV_11` with the same weight and the same
+background. It was congested to the point of being unreadable.
+
+**The fix — stop using a table.** Each settlement is now a discrete block:
+
+- a **coloured left edge** carrying the verdict at a glance (red at risk, amber
+  deferred or books-disagree, grey blocked, emerald clean);
+- a **header strip** — id, date, verdict chips, then invoice / filed-in / GST
+  charged / at-risk right-aligned with their own labels, so each row is
+  self-describing without a table header;
+- a **body on a tinted ground**, separated by a rule, with the findings in a
+  label/text grid so `FILING` and `BOOKS` align rather than running on;
+- the three sources as **three boxes** — Charged, Booked, Claimable — which also
+  makes them align vertically *down* the page, so the same figure can be compared
+  across settlements, not just within one;
+- 14px between blocks. The separation is the whole point.
+
+**Findings open, clean lines collapsed.** A settlement with nothing wrong shows
+only its header strip — one scannable line. Anything with a finding opens
+expanded, because that is what someone came to read. Per-block toggle plus an
+expand/collapse-all in the card header; the state resets when the run changes.
+
+**Files.** `web/index.html` (`.tx-*` styles, the block renderer replacing the
+table, `S.tx.open`) → `api/static/index.html` rebuilt.
+
+**How it was verified.** Rendered in Chromium on the evaluation batch: 22 blocks,
+7 open (5 filing findings + 2 books-only), zero horizontal overflow, console
+clean. 271 tests passing.
+
+---
+
+## 2026-09-04 — Title screen
+
+**What changed.** The app opens on a title screen: the **Razor Recon AI** wordmark
+and one button, *Open the dashboard*. Nothing else — no tagline, no feature chips,
+no mark.
+
+**Inverted from the rest of the app, deliberately.** Every other screen is emerald
+on white; the opener is white on emerald, so it reads as a cover rather than as a
+page that failed to load its content. Emerald radial (`--em-500` → `--em-700`),
+white title, white button with emerald text.
+
+**How it behaves.** An overlay above the header, not a route. `boot()` runs
+underneath it, so the dashboard is fully loaded by the time anyone clicks through
+— the screen costs nothing in time to first data. Enter or Space anywhere
+dismisses it too, the button is autofocused, and focus moves to the first tab on
+exit.
+
+**State is in-memory only, on purpose.** A reload shows it again, which is what you
+want when opening a demo — nothing to clear between runs, and no browser storage
+to go stale. It is not a setting.
+
+**Two small things worth noting.** The exit animation is dismissed on
+`animationend` *and* a 400 ms timeout, because `prefers-reduced-motion` suppresses
+the animation and the event never fires — without the fallback the overlay would
+stick forever for anyone who has that set. And Chromium's default focus ring is
+invisible on a white button, so `:focus-visible` draws it as a white halo against
+the surrounding green instead.
+
+**Note on the caveat.** The Demo Merchant Policy notice is not on this screen. It
+is still on every screen behind it, as the header chip — the opener carries no
+figures, so there is nothing there for it to qualify.
+
+**Files.** `web/index.html` (`#splash` markup, its CSS, `enterApp()`) →
+`api/static/index.html` rebuilt.
+
+**How it was verified.** Rendered in Chromium: the screen shows, the nine tabs are
+already built behind it, the button removes it, the dashboard is visible, zero
+horizontal overflow, console clean. 271 tests passing.
+
+---
+
+## 2026-09-04 — Renamed to Razor Recon AI
+
+**What changed.** The project is called **Razor Recon AI**. Every place the
+product named itself now says so:
+
+| file | where |
+|---|---|
+| `README.md` | the H1 |
+| `web/index.html` | `<title>` and the header wordmark (`api/static/index.html` rebuilt) |
+| `api/main.py` | the FastAPI app title, and the CSV export header row |
+| `scripts/reconcile.py` | the terminal report banner |
+| `db/schema.sql` | the file header comment |
+
+**Two occurrences deliberately left alone.**
+
+- `CHANGELOG.md` — *"The hackathon track is called AI Finance Controller"*. That
+  is the name of the **track**, not of this project. Rewriting it would make the
+  log say the track was named after us.
+- `agent/investigator.py` — *"explain what the engine found … to a finance
+  controller"*. That is the **human role** the agent is writing for, not a
+  product name. Renaming it would tell the model to address the software.
+
+The module, package and database are still `finctl` — an internal identifier,
+not the product name, and changing it would rewrite import paths, the connection
+string and every prior run's provenance for no user-visible gain.
+
+**How it was verified.** 271 tests passing. Terminal banner and the rebuilt SPA
+header both render the new name; a repo-wide grep for the old one returns only
+the two intentional occurrences above.
+
+---
+
+## 2026-09-04 — Tax-line matcher, with an explainability panel
+
+**What changed.** The track's other example direction, built. Δ₁ already proved
+the merchant was *charged* the right GST. This answers the different question:
+**can any of it actually be claimed back.** Input tax credit is only recoverable
+if the supplier filed a tax invoice that reaches the merchant's GSTR-2B, and past
+the claim deadline it is gone for good — one of the few reconciliation gaps that
+is a real, irreversible cash loss.
+
+**Three sources, two comparisons — and the second is the whole design.**
+
+| | source | who is at fault when it disagrees |
+|---|---|---|
+| CHARGED | `settlement_items.tax_paise` | — |
+| BOOKED | the `INPUT_GST` ledger postings | the merchant's own accountant |
+| CLAIMABLE | `tax_invoices` (GSTR-2B) | the supplier who did not file |
+
+Charged-vs-booked and booked-vs-filed are **two independent verdicts on every
+line**, never added together. My first draft returned early on the books check —
+and EV_15, which has *both* a duplicated INPUT_GST posting and an invoice filed
+under the wrong tax heads, silently reported only the first. The filing defect
+vanished. `test_a_books_problem_never_hides_a_filing_problem` pins it.
+
+**Verdicts.** Filing: `MATCHED`, `NOT_FILED`, `AMOUNT_MISMATCH`, `SPLIT_MISMATCH`
+(right amount, wrong heads — it will not offset), `PERIOD_MISMATCH`, `ITC_BLOCKED`.
+Claim state, which is what a controller acts on: `CLAIMABLE`, `DEFERRED` (real
+credit, later return period), `AT_RISK`, `BLOCKED` (never claimable — nothing to
+chase). Keeping `BLOCKED` out of "at risk" matters: otherwise someone spends a
+week chasing a supplier about money that was never theirs.
+
+**The trap.** EV_20 is a March settlement whose invoice lands in the April
+GSTR-2B. A naive "is it in this month's 2B" check calls that missing and
+overstates the loss. It is credit **deferred by a month, not lost** — `DEFERRED`,
+₹0 at risk, and a test asserts exactly that.
+
+**Nothing existing was modified.** New table (`tax_invoices`), new registry
+(`policy/tax.yaml`), new page, new tool. Not one existing row or column changed:
+
+- **`policy/tax.yaml` is deliberately separate from `policy/policy.yaml`.** The
+  core registry's `config_hash` is stamped on every run ever made; adding tax keys
+  there would silently invalidate all of them. `test_core_config_hash_is_unchanged`
+  asserts the literal value `8e2326ce0e4335ea` still holds.
+- **`db/tax.sql` is idempotent**, like `db/agent.sql` — installs onto a live
+  database. `schema.sql` is destructive and was not touched. Missing table ⇒ the
+  endpoint and page degrade with instructions rather than 500.
+- **Ground truth untouched.** The five tax findings live in
+  `fixtures/authoring.py::TAX_EXPECTATIONS`, *not* in `ground_truth_anomalies` —
+  that table feeds the honesty metrics and the "19 planted anomalies" the
+  dashboard reports. A test asserts `planted_total == 19` and that all four
+  honesty metrics are still perfect.
+
+**The data — small and realistic.** One gateway tax invoice per settlement, which
+is how a gateway actually bills. 21 invoices for the 22 settlements (one was never
+filed), across two return periods. Five planted findings, one per real failure
+mode: not filed (EV_07), per-invoice vs per-line rounding — 3 paise (EV_11), wrong
+tax heads (EV_15), filed a period late (EV_20), portal-blocked credit (EV_03).
+Records stay at **395**; the CSV export gains one file, 1,139 rows.
+
+**A finding I did not plant.** The books leg independently rediscovers three
+*existing* D1/D3 anomalies from a completely different angle — a duplicated ledger
+group double-posts INPUT_GST, a missing one drops it, and the tax-rounding
+scenario shows a 2-paise gap. That is corroboration from real planted data, not
+defects invented for this table, and it is the best evidence the check is doing
+something. On the seeded generator the same anomalies happen to miss the GST leg
+(it posts one group per payment, and they land on groups with no fee), so the demo
+run reconciles clean on tax — stated plainly rather than dressed up.
+
+**The page.** A `Tax credit` tab: headline tiles, the two comparisons side by side
+with the totals belonging to each, a per-return-period table (a claim is filed per
+period, not per settlement), and every settlement with both verdicts, worst first,
+each expanding into its findings and the three evidence rows behind it.
+
+**The XAI panel.** A floating button at the bottom of that page opens a small chat
+box over the same read-only agent, with its own transcript so it never disturbs
+the Ask tab. It gets `get_tax_credit` (14 tools now), citation chips that jump to
+the record, the unverified-reference warning, and the same honest degradation when
+no API key is set — with the point stated in the panel: *every number on this page
+is computed without it; the agent only explains what the matcher already decided.*
+
+**Bug found and fixed while testing.** `copy_entities` is shared between a fresh
+generation and an append. My first invoice numbering used a running counter, which
+restarts at 1 on every tick and collided on the second one — taking the whole
+append down with a unique-key violation, and 81 unrelated tests with it. Serials
+are derived from the settlement id now, and existing ones are skipped.
+`test_invoice_numbers_survive_an_append` covers it.
+
+**Files.**
+
+| file | change |
+|---|---|
+| `policy/tax.yaml` | **new** — separate versioned registry, own hash |
+| `db/tax.sql` | **new** — idempotent `tax_invoices` + constraints and indexes |
+| `engine/taxmatch.py` | **new** — the three-source match, two independent verdicts |
+| `fixtures/authoring.py` | **added** `TAX_INVOICES` + `TAX_EXPECTATIONS`; nothing existing touched |
+| `fixtures/loader.py` | `_load_tax_invoices`, skipped when the table is absent |
+| `fixtures/export_csv.py` | exports `tax_invoices.csv` |
+| `generator/generate.py` | `_copy_tax_invoices`, serials derived from the settlement id |
+| `api/main.py` | `GET /api/runs/{run_id}/tax` |
+| `agent/tools.py` | `get_tax_credit` handler + schema |
+| `agent/investigator.py` | INPUT TAX CREDIT section in the system prompt |
+| `web/index.html` | `viewTax()`, `xaiPanel()`, `askXai()`, the panel CSS, `tax` in `TABS` |
+| `Makefile.txt`, `run.sh` | `make tax-schema` |
+| `tests/test_taxmatch.py` | **new** — 34 tests |
+
+**How it was verified.** **271 tests passing** (was 236). Rendered in Chromium on
+the evaluation batch: console clean, zero page overflow, the panel opens and
+degrades correctly. The batch still scores 22/22 scenarios, 14/14 detection,
+14/14 diagnosis, 2/2 escalation, 3/3 traps, 0 false auto-resolutions, 395 records.
+
+**Standing caveat.** The GSTR-2B feed is authored for this project. It is not real
+filing data, nothing here is tax advice, and the GSTINs are placeholders
+containing "DEMO" so they cannot be mistaken for real registrations. The page, the
+API and the agent all say so.
 
 ---
 
@@ -667,11 +945,11 @@ held-back line on each settlement, and a dated release schedule feeding the same
 cash curve. Additive to the existing `Forecast` line/bucket shape — no rework.
 Not started.
 
-**Not planned — tax-line matcher.** The other track example. It would reconcile
-GST input credit across three sources: what the settlement charged per line, what
-`INPUT_GST` holds, and what the gateway's GSTR-2B tax invoice claims. The third
-source does not exist in the generator, so it would mean inventing a data source
-before the feature means anything — and Δ₁ already proves most of the arithmetic.
+**Built — tax-line matcher.** See the 2026-09-04 entry. `engine/taxmatch.py`,
+`policy/tax.yaml`, `db/tax.sql`, `GET /api/runs/{run_id}/tax`, the **Tax credit**
+tab with its explainability panel, and the `get_tax_credit` agent tool. The third
+source (GSTR-2B) is synthetic and labelled as such everywhere it surfaces — that
+is the honest cost of the feature and it is stated rather than hidden.
 
 **Supabase.** Considered and declined. Nothing in the project needs it; local
 Postgres keeps the benchmark honest and removes a demo-day network dependency.
@@ -689,6 +967,15 @@ and `prepare_threshold=None` for the transaction pooler).
   the true figure was ₹3.8 L. A test pins it.
 - **The evaluation batch is append-only.** Rows already marked settled are frozen;
   new scenarios and pipeline rows are added beside them, never over them.
+- **`policy/policy.yaml`'s `config_hash` is `8e2326ce0e4335ea` and must not move.**
+  It is stamped on every run ever made. A new feature that needs configuration
+  gets its OWN registry file, as `policy/tax.yaml` does.
+- **New tables ship as idempotent SQL** (`db/agent.sql`, `db/tax.sql`), never by
+  re-running the destructive `schema.sql`, and every reader degrades when the
+  table is absent.
+- **`ground_truth_anomalies` is for the four deltas only.** It feeds the honesty
+  metrics; a new feature's expectations live beside its own data and are scored
+  by its own tests.
 - Clean data must reconcile to **exactly zero** — CI gates on it, before and
   after appending.
 - **`api/static/index.html` is generated.** Never edit it; edit `web/index.html`

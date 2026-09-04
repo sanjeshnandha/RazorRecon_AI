@@ -777,6 +777,11 @@ def row_counts(ds: Dataset) -> dict:
     return counts
 
 
+# The supplier GSTIN on the synthetic tax invoices. Deliberately a placeholder
+# containing "DEMO" so it can never be read as a real registration.
+TAX_SUPPLIER_GSTIN = "29DEMOP0000D1Z5"
+
+
 def persist(ds: Dataset, conn) -> dict:
     d = ds.dataset_id
     counts = row_counts(ds)
@@ -787,6 +792,63 @@ def persist(ds: Dataset, conn) -> dict:
     copy_entities(ds, conn)
     conn.commit()
     return counts
+
+
+
+def _copy_tax_invoices(ds: Dataset, conn) -> int:
+    """The GSTR-2B feed: one gateway tax invoice per settlement.
+
+    Additive and optional. `tax_invoices` lives in db/tax.sql, not the destructive
+    schema.sql, so an installation that has not run it just gets a dataset with no
+    tax feed and everything else behaves identically.
+
+    The invoices are DERIVED from settlements that already exist -- the taxable
+    value is the fee and the tax is what the settlement charged. No new randomness
+    and no new anomaly pass: the interesting tax findings on a seeded dataset come
+    for free from the ledger anomalies already planted (a missing or duplicated
+    entry group takes INPUT_GST with it), which is a more honest source of signal
+    than defects invented specially for this table.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT to_regclass('public.tax_invoices') AS t")
+        if not cur.fetchone()["t"]:
+            return 0
+        # copy_entities is shared with append mode, which hands us a dataset that
+        # may include settlements already persisted. COPY cannot ON CONFLICT, so
+        # the existing invoice numbers are read once and skipped.
+        cur.execute("SELECT invoice_no FROM tax_invoices WHERE dataset_id=%s",
+                    (ds.dataset_id,))
+        seen = {r["invoice_no"] for r in cur.fetchall()}
+
+    rows = []
+    for st in sorted(ds.settlements, key=lambda x: (x["settlement_date"], x["settlement_id"])):
+        tax = int(st["tax_amount_paise"])
+        if not tax:
+            continue
+        day = st["settlement_date"]
+        # The serial is DERIVED from the settlement id, never from a counter.
+        # A counter restarts on every append and collides on the second tick --
+        # which is exactly the bug this replaced.
+        digits = "".join(ch for ch in st["settlement_id"] if ch.isdigit()) or "0"
+        no = f"DGS/{day.year}/{int(digits):05d}"
+        if no in seen:
+            continue
+        seen.add(no)
+        # Intra-state supply, so the total splits CGST/SGST with any odd paise
+        # landing on CGST -- the way a supplier's own billing system rounds it.
+        cgst, sgst = tax - tax // 2, tax // 2
+        rows.append((ds.dataset_id, no, day,
+                     f"{day.year:04d}-{day.month:02d}", TAX_SUPPLIER_GSTIN, "INVOICE",
+                     st["settlement_id"], int(st["fee_amount_paise"]), cgst, sgst, 0,
+                     True, None, day))
+    if not rows:
+        return 0
+    copy_rows(conn, "tax_invoices",
+              ["dataset_id","invoice_no","invoice_date","return_period","supplier_gstin",
+               "document_type","settlement_id","taxable_value_paise","cgst_paise",
+               "sgst_paise","igst_paise","itc_eligible","ineligible_reason","filed_at"],
+              rows)
+    return len(rows)
 
 
 def copy_entities(ds: Dataset, conn) -> None:
@@ -848,6 +910,7 @@ def copy_entities(ds: Dataset, conn) -> None:
               [(d, l["ledger_entry_id"], l["entry_group_id"], l["account"], l["direction"], l["amount_paise"],
                 l["order_id"], l["payment_id"], l["refund_id"], l["settlement_id"], l["seller_id"],
                 l["ledger_date"], l["description"]) for l in ds.ledger_entries])
+    _copy_tax_invoices(ds, conn)
     copy_rows(conn, "money_edges", ["dataset_id","src_type","src_id","dst_type","dst_id","edge_kind","amount_paise"],
               [(d, e["src_type"], e["src_id"], e["dst_type"], e["dst_id"], e["edge_kind"], e["amount_paise"])
                for e in ds.money_edges])
