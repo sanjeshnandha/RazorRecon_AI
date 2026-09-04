@@ -49,7 +49,7 @@ Individual steps:
 | `make reconcile` | runs the engine, prints the report |
 | `make tick` | appends the next settlement cycle, then re-reconciles |
 | `make evaluation-batch` | loads the fixed, hand-authored evaluation batch |
-| `make test` | 193 tests, including the 19 golden scenarios |
+| `make test` | 236 tests, including the 19 golden scenarios |
 | `make serve` | FastAPI + the SPA, one process |
 
 Every target also exists as `./run.sh <target>`. If `Makefile` did not survive
@@ -362,17 +362,23 @@ different seed produces a different one.
 
 ```
 policy/policy.yaml       the registry — read by BOTH the generator and the engine
-generator/               generate.py, anomalies.py, calendar.py
+generator/               generate.py, append.py, origin.py, anomalies.py, calendar.py
 engine/                  money.py, policy.py, loader.py, invariants.py,
                          calculation.py, matcher.py, subset_sum.py,
                          attribution.py, exceptions.py, lineage.py,
-                         metrics.py, runner.py, db.py
-api/                     main.py, schemas.py, static/ (the built SPA)
+                         forecast.py, metrics.py, runner.py, db.py
+fixtures/                the static evaluation batch: authoring.py, loader.py,
+                         evaluation_batch.json, export_csv.py, csv/
+agent/                   the investigation agent: llm.py, tools.py,
+                         investigator.py, store.py
+api/                     main.py, schemas.py, browse.py, static/ (the built SPA)
 web/                     index.html + build.sh
-db/                      schema.sql, indexes.sql
+db/                      schema.sql, indexes.sql, agent.sql
 tests/                   golden/manual/ (phase 0), test_golden.py (19 scenarios),
                          test_phase0_fixtures.py, test_invariants.py,
-                         test_calculation.py, test_money.py
+                         test_calculation.py, test_money.py, test_append.py,
+                         test_agent.py, test_browse.py, test_evaluation_batch.py,
+                         test_forecast.py
 scripts/reconcile.py     the terminal report
 ```
 
@@ -433,6 +439,8 @@ GET  /api/runs/{id}/exceptions?status=&severity=…   the honest exception list
 GET  /api/runs/{id}/sellers                         per-seller payout reconciliation
 GET  /api/runs/{id}/trace?node_type=&node_id=       Trace Money (recursive CTE)
 GET  /api/runs/{id}/audit                           every engine decision
+GET  /api/runs/{id}/forecast?horizon=&as_of=        the forward cash position,
+                                                    itemised line by line
 GET  /api/runs/{id}/export.csv | export.json        downloadable report
 
 GET  /api/fixtures/evaluation-batch                 what the static batch contains
@@ -462,6 +470,10 @@ nothing else changes.
 - **Dashboard** — ₹ amount at risk in large type, the financial waterfall for the
   worst settlement in the batch, the three reconciliation rates side by side
   (deliberately not blended), the ground-truth scorecard, and throughput.
+- **Cash position** — the forward view, itemised: every capture still awaiting
+  settlement with the date its cash lands, every settlement awaiting a bank
+  credit, every seller payout due, and everything already overdue. Horizon
+  selectable from 10 to 60 working days.
 - **Settlements** — every settlement with Δ₁/Δ₂/Δ₃/Δ₄ chips, expected vs actual
   vs bank, filters on tier and status.
 - **Settlement detail** — the waterfall for that settlement, the Δ₁ arithmetic
@@ -547,12 +559,94 @@ because a single append can pass on a counter that never advanced.
 
 ---
 
+## The cash position
+
+The track's title has two halves — *"run the books **and the cash position**"*.
+This is the second half.
+
+It has its own tab. `engine/forecast.py` derives a dated schedule of money that
+is **already owed**:
+
+| bucket | what it is |
+|---|---|
+| `settlement_awaited` | credits due from Razorpay on settlements the matcher did not match |
+| `pipeline` | payments captured but not yet itemised into any settlement |
+| `seller_payout` | marketplace allocations still `PENDING` |
+
+Each is dated by the same working-day calendar the engine reconciles against —
+`credit_due_date()` is settlement date + `expected_lag_days` + `bank_tolerance_days`,
+counted in working days, so a credit is never due on a Sunday or a bank holiday.
+Anything already past its due date drops out of the window into `overdue`.
+
+**It is derived, not predicted.** There is no model, no trend line and no
+seasonality. It contains no forecast of future sales — only obligations that
+already exist under the policy. That is a deliberate limit: a number a controller
+can act on has to be one you can point at a record for, and every line here cites
+both the record and the policy rule that dated it.
+
+**Δ₂ reads better because of it.** An exception that used to say *missing bank
+credit* now says **`AWAITED — due 2026-05-21, 3 working days`** or
+**`OVERDUE — due 2026-02-26, 58 working days`**. That is the distinction a
+controller actually cares about, and it is an *annotation*: the exception
+taxonomy and the tier gate are untouched, because those are what the accuracy
+numbers are measured against.
+
+### What the page shows
+
+Four tables, in the order a controller asks for them. The first is the one the
+page exists for — **what have we already taken that has not reached the bank
+yet, and when does each rupee land**:
+
+| Payment | Method | Captured | Settles | Cash lands | In | Gross | Fee + GST | Net expected |
+|---|---|---|---|---|---|---:|---:|---:|
+| `PIPE_P008` | CARD_INTL | 2026-03-18 | 2026-03-20 | **2026-03-23** | 5 working days | ₹14,800.00 | −₹523.92 | **₹14,276.08** |
+
+Three dates, deliberately kept apart: capture, settlement (T+2 working days), and
+the day the cash actually lands (settlement plus the bank lag and tolerance).
+**Net, not gross** — the gateway fee and GST never reach the bank, so showing
+gross as expected cash would overstate the position.
+
+Then: settlements awaiting a bank credit with the due date and the rule that set
+it; seller payouts due per allocation; and everything already overdue, split into
+credits and payouts with how many working days late each one is. The page ends
+with the engine's own assumptions, rendered — it states its reasoning rather than
+asking to be trusted.
+
+The horizon is selectable (10 / 15 / 30 / 60 working days), because a capture
+that settles beyond the default window is precisely what you widen for.
+
+### The mistake this design exists to avoid
+
+The first draft joined settlements to bank lines on the UTR and asked which had
+no match. It reported **₹1.2 Cr in flight**. The true figure is **₹3.8 L**.
+
+Twenty of those twenty-one settlements had already landed — their UTRs were
+corrupted on purpose, and the matcher had resolved them on `EXACT_AMOUNT_DATE`
+instead. A forecaster that re-derives "unmatched" from the raw records will
+confidently report money that is sitting in the bank.
+
+So the forecaster **reads the matcher's Δ₂ verdict** rather than re-deciding
+anything. `tests/test_forecast.py::test_reads_the_matcher_verdict_not_a_naive_utr_join`
+asserts the forecast stays strictly below the naive number, so the mistake cannot
+come back quietly.
+
+### Not built: rolling reserve release
+
+Razorpay holds a rolling reserve on some merchant categories and releases it on a
+fixed schedule. Modelling it means a reserve balance in the policy registry, a
+held-back line per settlement, and a dated release schedule feeding the same
+curve. Everything it needs already exists — the calendar, the registry, the
+line/bucket shape of `Forecast` — so it is additive, not a rework. Deliberately
+deferred, not overlooked.
+
+---
+
 ## The evaluation batch
 
 `make evaluation-batch`, or the **Evaluation batch** button in the header.
 
 The seeded generator is reproducible but large. This is the other thing: a
-**fixed, hand-authored batch of 22 settlements and 345 financial records**, small
+**fixed, hand-authored batch of 22 settlements and 395 financial records**, small
 enough to read end to end, with every expected outcome written down in
 `fixtures/evaluation_batch.json` beside the data that produces it. No seed, no
 sampling, no clock — the same rows every time, under a constant `dataset_id`, so
@@ -635,7 +729,7 @@ Ask it *"what is the single largest unexplained amount, and why could the engine
 not resolve it?"* and it calls tools, reads the persisted evidence, and answers
 with the settlement id, the delta id, the rupee figure and the rule that applied.
 
-**It cannot change anything.** `agent/tools.py` contains twelve functions and
+**It cannot change anything.** `agent/tools.py` contains thirteen functions and
 only `SELECT` statements — a test asserts that, rather than trusting it. Every
 query is scoped to the one run the session was opened on and parameterised here,
 so no SQL the model wrote ever reaches the database; the model picks a tool name
@@ -658,6 +752,7 @@ The tools it has:
 | `trace_money` | the lineage graph, up and down |
 | `get_policy` | the policy registry the engine computed against |
 | `get_audit` | the engine's own decision log |
+| `get_cash_forecast` | the forward cash position: what is due in, due out, and already overdue |
 
 **Two guardrails run after every answer.** The tool-call budget is bounded, so a
 confused model stops rather than walking the dataset. And every record id the

@@ -100,6 +100,7 @@ select:focus,input:focus{border-color:var(--em-500);box-shadow:0 0 0 3px var(--e
 .btn.primary{background:var(--em-600);border-color:var(--em-600);color:#fff}
 .btn.primary:hover{background:var(--em-700);border-color:var(--em-700);color:#fff}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.on{background:var(--em-50);border-color:var(--em-300);color:var(--em-700);font-weight:600}
 nav.tabs{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);background:#fff;
   overflow-x:auto}
 nav.tabs button{border:0;background:none;padding:11px 14px;cursor:pointer;color:var(--ink-3);
@@ -247,7 +248,8 @@ const S = {tab:"dashboard", runs:[], run:null, metrics:null, settlements:[], exc
            sellers:[], detail:null, sid:null, trace:null, traceQ:{type:"payment", id:""},
            filters:{status:"", tier:"", severity:"", kind:"", q:""}, busy:false, toast:null,
            agent:{status:null, turns:[], asking:false, draft:"", error:null},
-           data:{tables:[], table:null, page:null, offset:0, raw:false, busy:false}};
+           data:{tables:[], table:null, page:null, offset:0, raw:false, busy:false},
+           forecast:null, fc:{horizon:15, busy:false}};
 
 const $  = (s,r=document)=>r.querySelector(s);
 const el = (t,a={},...c)=>{const n=document.createElement(t);
@@ -303,6 +305,8 @@ async function selectRun(rid){
     api(`/api/runs/${rid}/metrics`), api(`/api/runs/${rid}/settlements`),
     api(`/api/runs/${rid}/exceptions`), api(`/api/runs/${rid}/sellers`)]);
   S.metrics=m; S.settlements=st.settlements; S.exceptions=ex.exceptions; S.sellers=se.sellers;
+  S.forecast=null;
+  try{ S.forecast=await api(`/api/runs/${rid}/forecast?horizon=${S.fc.horizon}`); }catch(e){}
   S.detail=null; S.sid=null; S.busy=false;
   // the conversation belongs to the run, so switching runs switches transcripts
   S.agent.turns=[]; S.agent.error=null;
@@ -987,6 +991,307 @@ function traceTree(t){
   return out;
 }
 
+/* ============================== FORECAST =============================== */
+/* Grouped inflow/outflow bars with a running-balance line. One axis: all three
+   series are rupees at comparable magnitude, so a second scale would only
+   distort the comparison. Emerald = money in, blue = money out; the blue is
+   validated against the emerald for colour-vision separation and is deliberately
+   NOT the amber or red this app reserves for "needs a human" and "unexplained" —
+   an outflow is normal business, not a problem. */
+const FC_IN = "#059669", FC_OUT = "#3b6fd4", FC_LINE = "#0f172a";
+
+/* A tick step that lands on 1/2/5 x a power of ten, in paise. */
+function niceStep(raw){
+  const e=Math.pow(10, Math.floor(Math.log10(Math.max(1,raw))));
+  const n=raw/e;
+  return (n<=1?1:n<=2?2:n<=5?5:10)*e;
+}
+/* Axis labels stay terse and uniform — never a full ₹x,xx,xxx.yy on a gridline. */
+function axisMoney(p){
+  if(!p) return "₹0";
+  const sign=p<0?"−":"", v=Math.abs(p)/100;
+  const trim=x=>String(Number(x.toFixed(2)));
+  if(v>=1e7) return sign+"₹"+trim(v/1e7)+" Cr";
+  if(v>=1e5) return sign+"₹"+trim(v/1e5)+" L";
+  if(v>=1e3) return sign+"₹"+trim(v/1e3)+" K";
+  return sign+"₹"+trim(v);
+}
+function forecastChart(days, height=250){
+  const ns="http://www.w3.org/2000/svg";
+  const mk=(t,a)=>{const n=document.createElementNS(ns,t);
+    for(const[k,v]of Object.entries(a||{}))n.setAttribute(k,v);return n;};
+  const W=Math.max(720, days.length*76), H=height, padL=62, padR=16, padT=18, padB=46;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const slot=iw/Math.max(1,days.length), bw=Math.min(15, slot*0.30);
+
+  const vals=days.flatMap(d=>[d.in_paise, -d.out_paise, d.running_paise]).concat([0]);
+  // nice round ticks, so the axis reads ₹1 L / ₹50 K / ₹0 and not the raw extremes
+  const rawLo=Math.min(0,...vals), rawHi=Math.max(0,...vals);
+  const step=niceStep(((rawHi-rawLo)||1)/4);
+  const lo=Math.floor(rawLo/step)*step, hi=Math.ceil(rawHi/step)*step;
+  const span=(hi-lo)||1;
+  const ticks=[]; for(let v=lo; v<=hi+step/2; v+=step) ticks.push(Math.round(v));
+  const y=v=>padT+ih-((v-lo)/span)*ih;
+  const cx=i=>padL+slot*i+slot/2;
+
+  // 100% so it fills a wide card, min-width so a long horizon SCROLLS in the
+  // wrapper's overflow-x instead of squashing every bar into a hairline.
+  const svg=mk("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",height:H,
+    style:`min-width:${W}px`,
+    role:"img","aria-label":"forecast cash flow by working day"});
+
+  // recessive grid, and a real zero line because the balance can go negative
+  for(const v of ticks){
+    const yy=y(v);
+    svg.appendChild(mk("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,
+      stroke:v===0?"#cbd5e1":"#f1f5f9","stroke-width":v===0?1.5:1}));
+    const t=mk("text",{x:padL-8,y:yy+4,"text-anchor":"end","font-size":10,fill:"#94a3b8"});
+    t.textContent=axisMoney(v); svg.appendChild(t);
+  }
+  const zy=y(0);
+  svg.appendChild(mk("line",{x1:padL,x2:W-padR,y1:zy,y2:zy,stroke:"#cbd5e1","stroke-width":1.5}));
+
+  days.forEach((d,i)=>{
+    const c=cx(i);
+    // 2px gap between the paired bars, ends rounded, both anchored to zero
+    const bars=[[d.in_paise, FC_IN, c-bw-1],[d.out_paise, FC_OUT, c+1]];
+    for(const [v,fill,x] of bars){
+      if(!v) continue;
+      const top=y(v), h=Math.max(2, zy-top);
+      svg.appendChild(mk("rect",{x, y:top, width:bw, height:h, rx:3, fill}));
+    }
+    const lab=mk("text",{x:c,y:H-26,"text-anchor":"middle","font-size":10,fill:"#64748b"});
+    lab.textContent=d.date.slice(8)+"/"+d.date.slice(5,7); svg.appendChild(lab);
+  });
+
+  // running balance, 2px, drawn over the bars with a surface ring at each marker
+  const pts=days.map((d,i)=>`${cx(i)},${y(d.running_paise)}`).join(" ");
+  svg.appendChild(mk("polyline",{points:pts,fill:"none",stroke:FC_LINE,"stroke-width":2,
+    "stroke-linejoin":"round","stroke-linecap":"round"}));
+  days.forEach((d,i)=>{
+    svg.appendChild(mk("circle",{cx:cx(i),cy:y(d.running_paise),r:3.5,fill:FC_LINE,
+      stroke:"#fff","stroke-width":2}));
+  });
+  // label only the ends, never every point
+  [[0,"start"],[days.length-1,"end"]].forEach(([i,anchor])=>{
+    if(days[i]===undefined) return;
+    const t=mk("text",{x:cx(i),y:y(days[i].running_paise)-11,"text-anchor":"middle",
+      "font-size":10.5,"font-weight":650,fill:FC_LINE});
+    t.textContent=compact(days[i].running_paise); svg.appendChild(t);
+  });
+
+  // per-day hover: a full-height hit target, wider than the marks
+  days.forEach((d,i)=>{
+    const hit=mk("rect",{x:padL+slot*i,y:padT,width:slot,height:ih,fill:"transparent"});
+    hit.style.cursor="crosshair";
+    const title=mk("title",{});
+    title.textContent=`${d.date}\nin  ${rupees(d.in_paise)}\nout ${rupees(d.out_paise)}\n`+
+                      `net ${rupees(d.net_paise)}\nbalance ${rupees(d.running_paise)}`;
+    hit.appendChild(title); svg.appendChild(hit);
+  });
+  return svg;
+}
+
+function fcLegend(){
+  const key=(c,label)=>el("span",{style:"display:inline-flex;align-items:center;gap:6px"},
+    el("span",{style:`width:10px;height:10px;border-radius:3px;background:${c};`+
+      "display:inline-block"}), el("span",{style:"color:var(--ink-3);font-size:12px"},label));
+  return el("div",{style:"display:flex;gap:16px;align-items:center;padding:0 16px 10px"},
+    key(FC_IN,"Money in"), key(FC_OUT,"Money out"),
+    el("span",{style:"display:inline-flex;align-items:center;gap:6px"},
+      el("span",{style:`width:14px;height:2px;background:${FC_LINE};display:inline-block`}),
+      el("span",{style:"color:var(--ink-3);font-size:12px"},"Running balance")));
+}
+
+/* ========================== CASH POSITION PAGE ========================= */
+/* The forward view. Everything here is *derived*: no model, no trend, no
+   forecast of future sales — only money already owed under the policy, dated by
+   the working-day calendar. Every row names the record it came from and the
+   policy rule that dated it, so a controller can go and check it. */
+
+async function reloadForecast(h){
+  if(!S.run) return;
+  S.fc.horizon=h; S.fc.busy=true; render();
+  try{ S.forecast=await api(`/api/runs/${S.run.run_id}/forecast?horizon=${h}`); }
+  catch(e){ toast(e.message); }
+  S.fc.busy=false; render();
+}
+
+const HORIZONS=[10,15,30,60];
+
+function fcStat(k,v,d,cls){
+  return el("div",{class:"stat "+(cls||"")},
+    el("div",{class:"k"},k), el("div",{class:"v"},v), d&&el("div",{class:"d"},d));
+}
+
+/* One table, built from a column spec. Keeps the four tables below identical in
+   behaviour so a reader learns the shape once. */
+function fcTable(cols, rows, empty){
+  if(!rows.length) return el("div",{class:"empty"}, empty);
+  return el("div",{class:"tablewrap"}, el("table",{},
+    el("thead",{}, el("tr",{}, ...cols.map(c=>
+      el("th",{style:c.num?"text-align:right":""}, c.h)))),
+    el("tbody",{}, ...rows.map(r=>
+      el("tr",{}, ...cols.map(c=>
+        el("td",{class:(c.num?"num ":"")+(c.cls||"")}, c.f(r))))))));
+}
+
+/* Days until, phrased so the number and its unit never separate. */
+function wd(n){
+  if(n===null||n===undefined) return "—";
+  return n===0 ? "today" : n===1 ? "1 working day" : `${n} working days`;
+}
+
+function viewCash(){
+  const f=S.forecast;
+  if(!f) return el("div",{class:"empty"},
+    "No forecast for this run. Run reconciliation first.");
+  const t=f.totals;
+  const lines=f.lines||[];
+  const pipeline = lines.filter(l=>l.bucket==="pipeline");
+  const awaited  = lines.filter(l=>l.bucket==="settlement_awaited");
+  const payouts  = lines.filter(l=>l.bucket==="seller_payout");
+
+  const horizonPicker = el("span",{style:"display:flex;gap:6px;align-items:center"},
+    el("span",{style:"font-size:12px;color:var(--ink-3)"},"Horizon"),
+    ...HORIZONS.map(h=>el("button",{class:"btn"+(S.fc.horizon===h?" on":""),
+      style:"padding:4px 9px;font-size:12px",
+      onclick:()=>reloadForecast(h)}, h+" wd")));
+
+  /* --------------------------------------------------- headline + chart -- */
+  const head = el("div",{class:"card"},
+    el("h3",{},"Cash position",
+      el("span",{class:"sub"},`as of ${f.as_of} · next ${f.horizon_working_days} working days`),
+      el("span",{class:"spacer",style:"flex:1"}),
+      S.fc.busy ? el("span",{class:"spin"}) : null,
+      horizonPicker),
+    el("div",{class:"grid",style:"grid-template-columns:repeat(4,1fr);gap:12px;padding:0 16px 12px"},
+      fcStat("Expected in", rupees(t.inflow_paise),
+        `${awaited.length} awaited credits · ${pipeline.length} in the pipeline`),
+      fcStat("Expected out", rupees(t.outflow_paise), `${payouts.length} seller payouts due`),
+      fcStat("Net", rupees(t.net_paise), "over the window",
+        t.net_paise<0?"bad":""),
+      fcStat("Overdue", rupees(t.overdue_paise + t.overdue_payout_paise),
+        `${t.overdue_count} credits · ${t.overdue_payout_count} payouts`,
+        (t.overdue_paise+t.overdue_payout_paise)?"bad":"")),
+    fcLegend(),
+    el("div",{class:"body",style:"overflow-x:auto;padding-top:0"},
+      f.days && f.days.length ? forecastChart(f.days)
+        : el("div",{class:"empty"},"Nothing scheduled in this window.")));
+
+  /* ------------------------------------- 1. captured, awaiting settlement -- */
+  /* The question this page exists to answer: what has the merchant already
+     taken that has not reached the bank yet, and when does each rupee land. */
+  const pipeCard = el("div",{class:"card"},
+    el("h3",{},"Captured, not yet settled",
+      el("span",{class:"sub"},
+        `${pipeline.length} payments · ${rupees(t.pipeline_paise)} net expected`),
+      el("span",{class:"spacer",style:"flex:1"}),
+      el("span",{class:"chip"},"projected")),
+    fcTable([
+      {h:"Payment", f:r=>el("span",{class:"tag mono"},r.subject_id)},
+      {h:"Method",  f:r=>el("span",{class:"chip"},r.detail.method||"—")},
+      {h:"Captured", f:r=>r.detail.capture_date},
+      {h:"Settles", f:r=>r.detail.settles_on,
+        cls:"", },
+      {h:"Cash lands", f:r=>el("b",{},r.date)},
+      {h:"In", f:r=>wd(r.detail.working_days_until_credit)},
+      {h:"Gross", num:true, f:r=>rupees(r.detail.gross_paise)},
+      // UPI is zero-rated in the policy registry; a row of "−Rs 0.00" is noise
+      {h:"Fee + GST", num:true, f:r=>el("span",{style:"color:var(--ink-3)"},
+        r.detail.fee_paise ? "−"+rupees(r.detail.fee_paise) : "—")},
+      {h:"Net expected", num:true, f:r=>el("b",{},rupees(r.amount_paise))},
+    ], pipeline,
+      "Nothing captured and unsettled inside this window. Widen the horizon, or "+
+      "the book has no trading after the last settlement period."),
+    el("div",{class:"body",style:"border-top:1px solid var(--line-2);font-size:12.5px;color:var(--ink-3)"},
+      "Settles at T+", (pipeline[0]&&pipeline[0].detail.cycle_working_days)||"n",
+      " working days from capture, then the bank lag and tolerance. Net is after ",
+      "the gateway fee and GST computed from the policy registry — the gross never ",
+      "reaches the bank, so showing it as expected cash would overstate the position. ",
+      "UPI carries no MDR under this policy, so those rows show no fee."));
+
+  /* ------------------------------------- 2. settled, awaiting bank credit -- */
+  const awaitedCard = el("div",{class:"card"},
+    el("h3",{},"Settled, awaiting bank credit",
+      el("span",{class:"sub"},
+        `${awaited.length} settlements · ${rupees(t.settlement_awaited_paise)}`),
+      el("span",{class:"spacer",style:"flex:1"}),
+      el("span",{class:"chip"},"awaited")),
+    fcTable([
+      {h:"Settlement", f:r=>el("button",{class:"btn",style:"padding:2px 8px;font-size:12px",
+        onclick:()=>openSettlement(r.subject_id)}, r.subject_id)},
+      {h:"Settled on", f:r=>r.detail.settlement_date},
+      {h:"Credit due", f:r=>el("b",{},r.date)},
+      {h:"In", f:r=>wd(r.detail.working_days_until_due)},
+      {h:"Rule", f:r=>el("span",{class:"mono",style:"font-size:11px"},r.rule)},
+      {h:"Amount", num:true, f:r=>el("b",{},rupees(r.amount_paise))},
+    ], awaited,
+      "Every settlement in this window has been matched to a bank credit."),
+    el("div",{class:"body",style:"border-top:1px solid var(--line-2);font-size:12.5px;color:var(--ink-3)"},
+      "These are the settlements the Δ₂ matcher could not match to a bank line — ",
+      "read from its verdict, not re-derived. A settlement matched on evidence ",
+      "other than the UTR has already landed and is deliberately absent here."));
+
+  /* ------------------------------------------------ 3. money going out ---- */
+  const payoutCard = el("div",{class:"card"},
+    el("h3",{},"Seller payouts due",
+      el("span",{class:"sub"},
+        `${payouts.length} allocations · ${rupees(t.seller_payout_paise)}`)),
+    fcTable([
+      {h:"Allocation", f:r=>el("span",{class:"tag mono"},r.subject_id)},
+      {h:"Seller", f:r=>r.detail.seller_name||r.detail.seller_id},
+      {h:"Funded by capture", f:r=>r.detail.capture_date},
+      {h:"Due", f:r=>el("b",{},r.date)},
+      {h:"Status", f:r=>el("span",{class:"chip"},r.state)},
+      {h:"Amount", num:true, f:r=>el("b",{},rupees(r.amount_paise))},
+    ], payouts, "No seller payouts fall due in this window."));
+
+  /* ------------------------------------------------------- 4. overdue ---- */
+  const od=f.overdue||[], odp=f.overdue_payouts||[];
+  const overdueCard = (od.length||odp.length) ? el("div",{class:"card"},
+    el("h3",{},"Already overdue",
+      el("span",{class:"sub"},"past its due date — owed now, not scheduled"),
+      el("span",{class:"spacer",style:"flex:1"}),
+      el("span",{class:"chip c"}, rupees(t.overdue_paise+t.overdue_payout_paise))),
+    od.length ? el("div",{},
+      el("div",{class:"body",style:"padding-bottom:6px;font-size:12px;font-weight:600;color:var(--ink-3)"},
+        `BANK CREDITS — ${od.length}, ${rupees(t.overdue_paise)}`),
+      fcTable([
+        {h:"Settlement", f:r=>el("button",{class:"btn",style:"padding:2px 8px;font-size:12px",
+          onclick:()=>openSettlement(r.settlement_id)}, r.settlement_id)},
+        {h:"Settled on", f:r=>r.settlement_date},
+        {h:"Was due", f:r=>r.due_date},
+        {h:"Overdue by", f:r=>el("span",{class:"chip c"}, wd(r.working_days_overdue))},
+        {h:"Amount", num:true, f:r=>el("b",{},rupees(r.amount_paise))},
+      ], od, "")) : null,
+    odp.length ? el("div",{},
+      el("div",{class:"body",style:"padding-bottom:6px;font-size:12px;font-weight:600;color:var(--ink-3)"},
+        `SELLER PAYOUTS — ${t.overdue_payout_count}, ${rupees(t.overdue_payout_paise)}`+
+        (odp.length<t.overdue_payout_count?` (largest ${odp.length} shown)`:"")),
+      fcTable([
+        {h:"Allocation", f:r=>el("span",{class:"tag mono"},r.allocation_id)},
+        {h:"Seller", f:r=>r.seller_name||r.seller_id},
+        {h:"Was due", f:r=>r.due_date},
+        {h:"Overdue by", f:r=>el("span",{class:"chip c"}, wd(r.working_days_overdue))},
+        {h:"Amount", num:true, f:r=>el("b",{},rupees(r.amount_paise))},
+      ], odp, "")) : null) : null;
+
+  /* --------------------------------------------------- how it was dated -- */
+  const basis = el("div",{class:"card"},
+    el("h3",{},"How these dates were derived"),
+    el("div",{class:"body"},
+      el("ul",{style:"margin:0;padding-left:18px;font-size:13px;line-height:1.65;color:var(--ink-2)"},
+        ...(f.assumptions||[]).map(a=>el("li",{},a))),
+      el("div",{style:"margin-top:12px;font-size:12.5px;color:var(--ink-3)"},
+        "Derived, not predicted. There is no model and no trend here — this is ",
+        "money already owed under the policy, dated by the calendar the engine ",
+        "reconciles against. It contains no forecast of future sales.")));
+
+  return el("div",{class:"grid",style:"gap:18px"},
+    head, pipeCard, awaitedCard, payoutCard, overdueCard, basis);
+}
+
 /* ============================ DATA BROWSER ============================= */
 /* Every table in the schema, scoped to the run you are looking at, with live
    row counts. Read-only: there is no write path from this tab, and the table
@@ -1186,8 +1491,8 @@ function viewAsk(){
 
 /* ================================ RENDER =============================== */
 const TABS=[["dashboard","Dashboard"],["settlements","Settlements"],["detail","Settlement detail"],
-  ["exceptions","Exceptions"],["sellers","Seller payouts"],["trace","Trace money"],
-  ["data","Data"],["ask","Ask the agent"]];
+  ["exceptions","Exceptions"],["cash","Cash position"],["sellers","Seller payouts"],
+  ["trace","Trace money"],["data","Data"],["ask","Ask the agent"]];
 function render(){
   const nav=$("#tabs"); nav.innerHTML="";
   for(const [k,label] of TABS){
@@ -1209,7 +1514,7 @@ function render(){
   } else {
     const v={dashboard:viewDashboard,settlements:viewSettlements,detail:viewDetail,
       exceptions:viewExceptions,sellers:viewSellers,trace:viewTrace,ask:viewAsk,
-      data:viewData}[S.tab];
+      data:viewData,cash:viewCash}[S.tab];
     app.appendChild(v());
   }
   document.querySelectorAll(".toast").forEach(n=>n.remove());

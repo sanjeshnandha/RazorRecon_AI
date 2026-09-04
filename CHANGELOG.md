@@ -34,12 +34,13 @@ the results without being able to change them.
 Six dependencies: `psycopg`, `fastapi`, `uvicorn`, `PyYAML`, `pydantic`, `pytest`.
 No ORM, no npm, no vendor AI SDK. All money is `BIGINT` paise — never floats.
 
-**Tests: 201, all passing.**
+**Tests: 236, all passing.**
 
 | file | n | covers |
 |---|---:|---|
 | `test_evaluation_batch.py` | 64 | the static batch: every scenario's stated delta, tier and exception, plus the CSV export |
 | `test_agent.py` | 41 | agent tools, scoping, injection refusal, citation guard, storage |
+| `test_forecast.py` | 34 | the cash forecaster: due dates, roll-up, provenance, line detail, the agent tool |
 | `test_golden.py` | 30 | the 19 golden scenarios |
 | `test_append.py` | 19 | append mode: tiling, id sequences, late refunds, clean-append zero |
 | `test_browse.py` | 14 | the Data tab: catalogue registry, injection, scoping, paging |
@@ -73,24 +74,27 @@ make evaluation-batch                        # load the fixed 22-scenario batch
 make evaluation-csv                          # export it to fixtures/csv/
 make agent-schema                            # add the agent table to a LIVE db
 make db-summary / make db-shell              # inspect the database
-make test                                    # 193 tests
+make test                                    # 236 tests
 ```
 
 **Layout.**
 
 ```
-engine/       13 modules — the deterministic reconciliation engine (unchanged this session)
+engine/       14 modules — the deterministic reconciliation engine (+ forecast.py)
 generator/    seeded dataset generation + append mode (origin.py, append.py are new)
 fixtures/     the static evaluation batch: authoring.py, loader.py, evaluation_batch.json
               plus export_csv.py and csv/ — the same batch as 15 flat files
 agent/        the investigation agent: llm.py, tools.py, investigator.py, store.py
 api/          FastAPI app + browse.py (Data tab) + the single-file SPA in static/
 db/           schema.sql (destructive), indexes.sql, agent.sql (idempotent)
-tests/        193 tests
+tests/        236 tests
 ```
 
-**UI tabs.** Dashboard · Settlements · Settlement detail · Exceptions · Seller
-payouts · Trace money · **Data** · **Ask the agent**
+**UI tabs.** Dashboard · Settlements · Settlement detail · Exceptions ·
+**Cash position** · Seller payouts · Trace money · Data · Ask the agent
+
+**Dashboard cards.** Run summary · Δ waterfall · Ground-truth scoring ·
+Matcher guards · Exceptions by type
 
 **UI copy policy.** Screens state what they are and show numbers — no
 explanatory paragraphs, no commentary columns, no metric labels written as
@@ -99,6 +103,195 @@ these are not Razorpay's real terms, so that notice stays.
 
 **Header buttons.** Generate dataset · Simulate next cycle · Evaluation batch ·
 Run reconciliation
+
+---
+
+## 2026-09-04 — Cash position moved to its own page, and itemised
+
+**What changed.** The forecast was a card on the dashboard showing four totals
+and a chart. Four totals tell you *how much*; they do not tell you *which
+records*. It is now its own tab — **Cash position** — where every rupee in those
+totals is a row you can read, with the record it came from and the date logic
+that put it there.
+
+**The question the page answers.** *"What have we already taken that hasn't
+reached the bank yet, and when does each rupee land?"* That is the
+**Captured, not yet settled** table, and it is the centrepiece:
+
+| Payment | Method | Captured | Settles | Cash lands | In | Gross | Fee + GST | Net expected |
+|---|---|---|---|---|---|---:|---:|---:|
+| `PIPE_P008` | CARD_INTL | 2026-03-18 | 2026-03-20 | **2026-03-23** | 5 working days | ₹14,800.00 | −₹523.92 | **₹14,276.08** |
+
+Three dates, deliberately not collapsed into one: when the payment was captured,
+when it settles (T+2 working days), and when the cash actually lands (settlement
+plus the bank lag and tolerance). **Net, not gross** — the gateway fee and GST
+computed from the policy registry never reach the bank, so showing gross as
+expected cash would overstate the position. UPI is 0 bps under this policy, so
+those rows show no fee rather than a row of `−₹0.00`.
+
+**Four tables, in the order a controller would ask for them.**
+
+1. **Captured, not yet settled** — money taken, still in Razorpay's hands.
+2. **Settled, awaiting bank credit** — settled, matcher found no bank line, credit
+   due on a stated date. Each row links through to the settlement.
+3. **Seller payouts due** — what goes out, per allocation, per seller.
+4. **Already overdue** — past its due date, split into bank credits and seller
+   payouts, each with how many working days late.
+
+Then **How these dates were derived** — the assumptions rendered from the
+engine's own `assumptions` list, so the page states its reasoning rather than
+asking to be trusted.
+
+**A horizon control.** 10 / 15 / 30 / 60 working days, re-querying the endpoint.
+A capture that settles beyond the default 15-day window is exactly the thing you
+want to widen for, and it was previously invisible.
+
+**Structured detail on every line.** `Line` gained a `detail` dict, so the UI
+builds columns from typed fields instead of parsing the `basis` sentence. Shapes:
+pipeline carries `capture_date` / `settles_on` / `credit_due` / `method` /
+`gross_paise` / `fee_paise` / `working_days_until_credit`; awaited carries
+`settlement_date` / `due_date` / `working_days_until_due`; payouts carry
+`seller_id` / `seller_name` / `capture_date` / `due_date`. All JSON-safe scalars —
+a `date` object here would 500 the endpoint, so a test asserts it.
+
+**Chart fix found while testing.** At a 60-working-day horizon the SVG was
+squashing every bar into a hairline: it was `width:100%` inside an `overflow-x:auto`
+wrapper, so it shrank to fit rather than overflowing. Now it carries
+`min-width:${W}px` as well — fills a wide card, scrolls when the horizon is long.
+Verified the page body itself still has **zero** horizontal overflow.
+
+**Files.**
+
+| file | change |
+|---|---|
+| `engine/forecast.py` | `Line.detail`, populated for all three buckets |
+| `web/index.html` | `viewCash()` — the page; `reloadForecast()`, `fcTable()`, `fcStat()`, `wd()`; `viewForecastCard()` removed from the dashboard; `cash` added to `TABS`; `.btn.on` style; the chart `min-width` fix |
+| `tests/test_forecast.py` | +6 tests on `detail` — date ordering, fee against the registry, the zero-rated case, JSON safety |
+
+**How it was verified.** **236 tests passing** (was 230). Rendered in Chromium on
+both the seeded demo run and the evaluation batch, at 15 and 60 working days:
+console clean, no page overflow, no label collisions. On the evaluation batch the
+page shows the 13 pipeline captures individually — ₹73,527.46 net expected — plus
+2 settlements awaiting credit and 11 payouts due.
+
+---
+
+## 2026-09-04 — Forward cash forecaster (phases 1–3)
+
+**What changed.** The project now answers the second half of its own track title
+— *"run the books **and the cash position**"*. A new deterministic forecaster
+derives, from the working-day calendar and the policy registry, a dated schedule
+of money already owed: credits still due from Razorpay, payments captured but not
+yet itemised into a settlement, and seller payouts still PENDING. It ships as an
+engine module, an API endpoint, a dashboard chart, and an agent tool.
+
+It is **derived, never predicted.** There is no model, no trend, no seasonality
+and no forecast of future sales — only obligations that already exist under the
+policy, dated by the same calendar the engine reconciles against.
+
+**The one design rule that matters.** The forecaster reads the matcher's Δ₂
+verdict rather than re-deriving "unmatched" with its own SQL. My first draft
+joined settlements to bank lines on the UTR and reported **₹1.2 Cr in flight**.
+The true figure is **₹3.8 L** — 20 of those 21 settlements had already landed and
+were matched on `EXACT_AMOUNT_DATE` because their UTR was corrupted on purpose.
+A forecaster that re-decides what the matcher already decided will confidently
+report money that is sitting in the bank. `tests/test_forecast.py::
+test_reads_the_matcher_verdict_not_a_naive_utr_join` asserts the forecast stays
+strictly below the naive number, so this cannot silently regress.
+
+**Phase 1 — due dates.** `credit_due_date()` = settlement date + `expected_lag_days`
++ `bank_tolerance_days`, counted in working days. Δ₂ exceptions in the API are now
+**annotated** with `AWAITED (due 2026-05-21, 3 working days)` or
+`OVERDUE (due 2026-02-26, 58 working days)`. Annotated, not reclassified: the
+engine's exception taxonomy and tiers are untouched, because the tier gate is what
+the accuracy numbers are measured against.
+
+**Phase 2 — the cash curve.** `_roll_up()` buckets every line into working days
+with a running balance. Anything already past its due date drops out of the window
+into `overdue` / `overdue_payouts` rather than being drawn as if it were coming.
+
+**Phase 3 — pipeline data, strictly additive.** Per the standing condition on the
+evaluation batch: **no existing row was modified.** Every settled record in the
+22-scenario batch is byte-for-byte what it was. What was added is a tail of
+captured-but-unsettled trading after the last period closed —
+
+- **Evaluation batch:** 13 captures over 4 trading days (2026-03-16 → 03-19),
+  11 PENDING allocations, spread across the real customer and seller population
+  with mixed methods and amounts. Records **345 → 395**.
+- **Seeded generator:** the same idea at scale — 45 pipeline payments, 204 PENDING
+  allocations on the demo dataset.
+
+Capture-only ledger postings (DR `RAZORPAY_CLEARING` / CR `SALES`, no settlement
+group) so the pipeline cannot manufacture a false Δ₃.
+
+**Verified — the batch is unchanged.** After the pipeline rows, the batch still
+scores **22/22 scenarios identical**, detection **14/14**, diagnosis **14/14**,
+escalation **2/2**, traps avoided **3/3**, false auto-resolutions **0**. The demo
+run is likewise undisturbed: **92.00%** match rate, **50/50** detection, **5/5**
+traps, **0** false auto-resolutions.
+
+**What it reports** (demo run, as-of 2026-05-17, next 15 working days):
+
+| | |
+|---|---:|
+| Expected in | ₹3,30,030.76 |
+| Expected out | ₹2,92,029.92 |
+| Net over the window | ₹38,000.84 |
+| Already overdue | ₹48,22,306.31 (4 credits, 165 payouts) |
+
+The as-of date is **the book's own present** — the day after the last settlement
+period closed — not wall-clock time, which is meaningless against a dataset dated
+2026.
+
+**The chart.** Grouped inflow/outflow bars plus a running-balance line, built to
+the `dataviz` rules: **one axis** (never a second y-scale), nice round gridline
+ticks (`₹2 L / ₹1 L / ₹0 / −₹1 L / −₹2 L`), a real zero line because the balance
+goes negative, 2px surface gaps between paired bars, direct labels on the two
+endpoints only, a legend, and a per-day hover target wider than the marks.
+Palette validated with the skill's own script: `#059669` / `#3b6fd4` pass all six
+checks (CVD ΔE **21.1**, well above the 8 target). Rendered in Chromium and
+eyeballed — no label collisions, no overflow, console clean.
+
+**The agent tool.** `get_cash_forecast` joins the read-only tool set (13 tools
+now). Same three guarantees as the rest: no model-written SQL, scoped to one
+`run_id`, every limit clamped server-side. Its returned line ids (`A_03334`,
+`P_01288`) satisfy the existing citation guard, so a claim about the cash position
+is verifiable the same way a claim about a delta is. The system prompt gained a
+CASH POSITION section instructing the model to present it as a derived schedule
+and never as a projection of revenue.
+
+**Files.**
+
+| file | change |
+|---|---|
+| `engine/forecast.py` | **new** — due dates, the roll-up, `build()` / `to_dict()` |
+| `fixtures/authoring.py` | **added** `PIPELINE` + `pipeline_day()`; nothing existing touched |
+| `fixtures/loader.py` | materialise pipeline rows with capture-only ledger postings |
+| `generator/generate.py` | pipeline tail after the settlement items; `ds.pipeline_from` |
+| `api/main.py` | `GET /api/runs/{run_id}/forecast`; Δ₂ exceptions annotated with credit state |
+| `web/index.html` | `forecastChart()`, `fcLegend()`, `viewForecastCard()`, `niceStep()`, `axisMoney()` |
+| `agent/tools.py` | `get_cash_forecast` handler + schema |
+| `agent/investigator.py` | CASH POSITION section in the system prompt |
+| `tests/test_forecast.py` | **new** — 28 tests |
+| `fixtures/csv/` | re-exported: 1,118 rows across 15 files (was 1,043) |
+
+**How it was verified.** `tests/test_forecast.py` — 28 tests covering due-date
+arithmetic on the working-day calendar, the running balance as a cumulative sum,
+totals equal to the sum of the days, buckets partitioning the window, integer
+paise everywhere, every line citing a record *and* a policy rule, overdue items
+never appearing inside the window, the matcher-verdict rule above, provenance of
+each bucket against the database, determinism across two builds, a digest proving
+the forecaster writes nothing, and the agent tool's clamping, bucket filter and
+run scoping. **Full suite: 230 passing.** Chart rendered in Chromium and
+inspected; palette re-validated.
+
+**Deferred — phase 4, rolling reserve release.** Explicitly postponed at the
+user's request. Razorpay holds a rolling reserve on some merchant categories and
+releases it on a fixed schedule; modelling it would mean adding a reserve balance
+to the policy registry, a held-back line on each settlement, and a dated release
+schedule feeding the same cash curve. Everything it needs is already in place —
+the calendar, the policy registry, the line/bucket shape of `Forecast` — so it is
+an additive change, not a rework. Not started.
 
 ---
 
@@ -463,14 +656,16 @@ never advanced.
 
 ## Decisions and open items
 
-**Deferred — forward cash forecaster.** Discussed and deliberately postponed. It
-would derive a day-by-day cash curve from the working-day calendar and policy the
-project already has: when each settlement lands, what is owed out to sellers
-(169 PENDING allocations ≈ ₹26.8 L in one run), and what rolling reserve is held.
-It would also upgrade Δ₂ from "missing" to **"due Thursday" vs "overdue by three
-days"**, which is the distinction a controller actually cares about. This is the
-strongest remaining addition — it completes the track's own subtitle, *"Run the
-books and the cash position"*.
+**Built — forward cash forecaster (phases 1–3).** See the 2026-09-04 entry.
+`engine/forecast.py`, `GET /api/runs/{run_id}/forecast`, the **Cash position**
+tab, and the `get_cash_forecast` agent tool. Δ₂ now reads *"due 2026-05-21"* vs
+*"overdue by 58 working days"* rather than just "missing".
+
+**Deferred — phase 4, rolling reserve release.** The one piece of the forecaster
+deliberately left out. It would add a reserve balance to the policy registry, a
+held-back line on each settlement, and a dated release schedule feeding the same
+cash curve. Additive to the existing `Forecast` line/bucket shape — no rework.
+Not started.
 
 **Not planned — tax-line matcher.** The other track example. It would reconcile
 GST input credit across three sources: what the settlement charged per line, what
@@ -489,6 +684,11 @@ and `prepare_threshold=None` for the transaction pooler).
 - The four deltas are reported separately and never blended into one number.
 - Runs are immutable. A re-run mints a new `run_id`; nothing is ever mutated.
 - The agent reads. It never computes and never writes.
+- **The forecaster reads the matcher's verdict.** It must never re-derive
+  "unmatched" from the raw records — that mistake reported ₹1.2 Cr in flight when
+  the true figure was ₹3.8 L. A test pins it.
+- **The evaluation batch is append-only.** Rows already marked settled are frozen;
+  new scenarios and pipeline rows are added beside them, never over them.
 - Clean data must reconcile to **exactly zero** — CI gates on it, before and
   after appending.
 - **`api/static/index.html` is generated.** Never edit it; edit `web/index.html`

@@ -84,6 +84,9 @@ the engine refused to guess. Tier C is a deliberate outcome, not a failure: the 
 engine declining an ambiguous match is the behaviour that makes the other \
 numbers trustworthy. Explain it that way.
 
+CASH POSITION
+get_cash_forecast returns a forward cash position. It is a derived schedule of money already owed under the policy -- credits due from Razorpay on settlements the matcher did not match, payments captured but not yet itemised, and seller payouts still pending -- dated by the working-day calendar. It is not a prediction of future trading, and it contains no forecast of sales. Present it that way, and never describe it as a projection or an estimate of revenue. Anything already past its due date comes back under overdue_credits or overdue_payouts rather than in the window.
+
 POLICY
 All rates come from a synthetic "Demo Merchant Policy" authored for this project. \
 It is NOT Razorpay's real commercial pricing. If you cite a rate, take it from \

@@ -22,21 +22,34 @@ Everything else is the data those expectations are about.
 | `scenarios.csv` | 22 | the manifest: scenario, family, expected outcome, note |
 | `customers.csv` | 26 | named customers; the busiest has four payments |
 | `sellers.csv` | 6 | all three commission tiers, one SUSPENDED |
-| `orders.csv` | 33 | fewer than payments, because one order was retried three times |
-| `payments.csv` | 35 | includes two FAILED attempts that must never settle |
+| `orders.csv` | 46 | fewer than payments, because one order was retried three times |
+| `payments.csv` | 48 | 35 settled, 13 captured and still in the pipeline; two FAILED attempts that must never settle |
 | `refunds.csv` | 3 | one deducted correctly, one never deducted, one belonging to the next period |
-| `seller_allocations.csv` | 25 | what each seller was owed, across 16 settlements |
+| `seller_allocations.csv` | 36 | 25 settled across 16 settlements, 11 still PENDING |
 | `transfers.csv` | 25 | what actually moved, including one REVERSED |
 | `adjustments.csv` | 1 | a chargeback that hit the header but was never itemised |
 | `settlements.csv` | 22 | the headers — one per scenario |
 | `settlement_items.csv` | 35 | the lines those headers roll up from |
 | `bank_transactions.csv` | 21 | 22 settlements, 21 credits: one is missing on purpose |
-| `ledger_entries.csv` | 200 | double-entry postings, including one duplicated and one absent |
-| `money_edges.csv` | 519 | the lineage graph behind Trace Money |
+| `ledger_entries.csv` | 226 | double-entry postings, including one duplicated and one absent |
+| `money_edges.csv` | 582 | the lineage graph behind Trace Money |
 | `ground_truth_anomalies.csv` | 19 | what was planted, and what should be found |
 
-**345 financial records** across payments, refunds, allocations, transfers,
+**395 financial records** across payments, refunds, allocations, transfers,
 adjustments, settlement items, bank lines and ledger postings.
+
+## The pipeline tail
+
+The last 13 payments are **captured but not yet settled** — four trading days
+(2026-03-16 → 03-19) after the final settlement period closed, with 11 allocations
+still `PENDING`. They exist so the cash forecaster has a forward position to
+report, and they carry capture-only ledger postings (DR `RAZORPAY_CLEARING` /
+CR `SALES`) so they cannot manufacture a false Δ₃.
+
+They are **purely additive**: no row that was already settled was modified when
+they were added, and the 22 scenarios score exactly as they did before. Nothing
+in `scenarios.csv` refers to them — they are not a scenario, they are the trading
+that had not yet been settled when the book closed.
 
 ## Two things to know before reading a number
 
@@ -45,7 +58,7 @@ No column is ever a float — that is deliberate, and it is why the arithmetic i
 exact. Divide by 100 for display only.
 
 **`dataset_id` has been dropped from every file.** It is the same constant on all
-992 rows and carries no information here; the batch is one dataset.
+1,118 rows and carries no information here; the batch is one dataset.
 
 ## Regenerating
 

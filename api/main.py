@@ -321,8 +321,26 @@ def exceptions(run_id: str, status: str | None = None, severity: str | None = No
             params.append(val)
     rows = _rows(sql + " ORDER BY (severity='HIGH') DESC, unexplained_paise DESC, exception_id",
                  tuple(params))
-    ids = [r["exception_id"] for r in rows]
-    return {"demo_policy_label": DISCLAIMER, "exceptions": rows,
+
+    # A bank exception is not one thing. Money that is contractually due
+    # tomorrow and money that is three working days late are different problems,
+    # and the flat exception cannot tell them apart. Annotated here rather than
+    # changed in the engine, so the exception taxonomy and every ground-truth
+    # score stay exactly as they are.
+    from engine import forecast as fc
+    from engine.policy import load_policy
+    policy = load_policy()
+    ds = _dataset_of(run_id)
+    dated = {r["settlement_id"]: r["settlement_date"] for r in
+             _rows("SELECT settlement_id, settlement_date FROM settlements WHERE dataset_id=%s",
+                   (ds,))}
+    with tx() as conn:
+        as_of = fc._as_of(conn, ds)
+    for r in rows:
+        if r["delta_kind"] == "D2_BANK" and r["settlement_id"] in dated:
+            r["credit"] = fc.settlement_status(dated[r["settlement_id"]], as_of, policy)
+
+    return {"demo_policy_label": DISCLAIMER, "exceptions": rows, "as_of": as_of.isoformat(),
             "total_unexplained_paise": sum(r["unexplained_paise"] for r in rows)}
 
 
@@ -393,6 +411,30 @@ def trace_money(run_id: str, node_type: str = Query(...), node_id: str = Query(.
     result["nodes"] = snap_rows
     result["demo_policy_label"] = DISCLAIMER
     return result
+
+
+# --------------------------------------------------------------- forecast ---
+@app.get("/api/runs/{run_id}/forecast")
+def forecast_view(run_id: str, horizon: int = 15, as_of: str | None = None):
+    """The forward cash position for this run.
+
+    Derived, not predicted: every date comes from the working-day calendar and
+    the policy registry, and every line cites the rule that dated it. Reads the
+    matcher's D2 verdict rather than re-deciding what was matched.
+    """
+    from datetime import date as _date
+
+    from engine import forecast as fc
+    ds = _dataset_of(run_id)
+    when = None
+    if as_of:
+        try:
+            when = _date.fromisoformat(as_of)
+        except ValueError:
+            raise HTTPException(400, "as_of must be YYYY-MM-DD")
+    with tx() as conn:
+        f = fc.build(conn, run_id, ds, when, horizon)
+    return fc.to_dict(f)
 
 
 # --------------------------------------------------------------- fixtures ---

@@ -621,12 +621,78 @@ for _sid, _splits in {
     paid_out(_BY_ID[_sid], _splits)
 
 
+# =============================================================================
+# THE PIPELINE -- captured, not yet settled.
+#
+# Everything above is history: money that has already been through a settlement
+# and can be reconciled. This is the other half of a real book -- payments taken
+# in the days AFTER the last period closed, which no settlement has picked up
+# yet. They are not reconcilable and never appear in a delta; they are what the
+# cash forecast is made of.
+#
+# Strictly ADDITIVE. No row above is touched, so all 22 scenarios keep exactly
+# the outcomes they state. These payments simply did not exist before.
+#
+# Each one carries its capture double-entry (DR RAZORPAY_CLEARING / CR SALES)
+# and nothing else -- there is no settlement posting because there has been no
+# settlement. Delta-3 only scopes to payments itemised in a settlement, so an
+# open clearing balance here is correct rather than an imbalance.
+# =============================================================================
+def pipeline_day(day, entries):
+    """One trading day's captures. `entries` is [(amount, method, [(seller, bps)]), ...]."""
+    out = []
+    for amount, method, splits in entries:
+        _seq["pipeline"] = _seq.get("pipeline", 0) + 1
+        pid = f"PIPE_P{_seq['pipeline']:03d}"
+        p = pay(pid, amount, method, day)
+        p["settled"] = False
+        allocs = []
+        for seller_id, share_bps in splits:
+            _seq["alloc"] += 1
+            # PENDING: the seller is owed this, but the payout has not run.
+            # Delta-4 scores only SETTLED allocations, so this is future cash,
+            # not an unexplained gap.
+            allocs.append(alloc(f"ALLOC_{_seq['alloc']:04d}", pid, seller_id,
+                                bps(amount, share_bps), status="PENDING"))
+        out.append({"payment": p, "allocations": allocs})
+    return {"capture_date": day, "captures": out}
+
+
+# Four trading days after the last settlement period closed on 2026-03-15.
+# Volumes and method mix follow the settled history, because a pipeline that
+# looks nothing like the book behind it is not a pipeline.
+PIPELINE = [
+    pipeline_day("2026-03-16", [
+        (485000, "CARD", [("SELL_01", 6000), ("SELL_04", 3000)]),
+        (250000, "UPI", [("SELL_02", 8000)]),
+        (1120000, "CARD", [("SELL_05", 7500)]),
+        (318000, "NETBANKING", []),
+    ]),
+    pipeline_day("2026-03-17", [
+        (742000, "CARD", [("SELL_03", 9000)]),
+        (196000, "UPI", []),
+        (655000, "WALLET", [("SELL_01", 5000), ("SELL_02", 4000)]),
+    ]),
+    pipeline_day("2026-03-18", [
+        (1480000, "CARD_INTL", [("SELL_05", 8000)]),
+        (409000, "UPI", [("SELL_04", 7000)]),
+        (275000, "CARD", []),
+        (890000, "NETBANKING", [("SELL_03", 6500)]),
+    ]),
+    pipeline_day("2026-03-19", [
+        (533000, "CARD", [("SELL_01", 7000)]),
+        (167000, "UPI", []),
+    ]),
+]
+
+
 def main() -> None:
     doc = {
         "batch_id": "EVALUATION_BATCH_V1",
         "dataset_id": DATASET_ID,
         "customers": CUSTOMER_ROWS,
         "sellers": SELLER_ROWS,
+        "pipeline": PIPELINE,
         "title": "Static evaluation batch -- hand-authored, fixed, no randomness",
         "policy_version": P.version,
         "config_hash": P.config_hash,
@@ -646,9 +712,14 @@ def main() -> None:
     allocs = sum(len(s["allocations"]) for s in SCENARIOS)
     used = {p["customer_id"] for s in SCENARIOS for p in s["payments"]}
     print(f"wrote {OUT} -- {len(SCENARIOS)} scenarios {fams}")
+    pipe_pay = sum(len(d["captures"]) for d in PIPELINE)
+    pipe_amt = sum(c["payment"]["amount_paise"] for d in PIPELINE for c in d["captures"])
+    pipe_alloc = sum(len(c["allocations"]) for d in PIPELINE for c in d["captures"])
     print(f"  {len(used)} customers used of {len(CUSTOMER_ROWS)} · "
           f"{len(SELLER_ROWS)} sellers · {allocs} allocations across "
           f"{sum(1 for s in SCENARIOS if s['allocations'])} settlements")
+    print(f"  pipeline: {pipe_pay} captures over {len(PIPELINE)} days "
+          f"({pipe_amt / 100:,.2f} rupees), {pipe_alloc} allocations pending payout")
 
 
 if __name__ == "__main__":

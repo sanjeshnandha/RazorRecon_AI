@@ -434,6 +434,69 @@ def get_audit(conn, ctx, settlement_id: str, limit: int = 30) -> dict:
             "audit": [_jsonable(r) for r in rows]}
 
 
+def get_cash_forecast(conn, ctx, horizon_working_days: int = 15,
+                      bucket: str | None = None, limit: int = DEFAULT_ROWS) -> dict:
+    """The forward cash position for this run: what is due in, what is due out,
+    day by day over the next working days, plus everything already overdue.
+
+    Every date is derived from the working-day calendar and the policy registry,
+    never predicted. The forecast reads the matcher's D2 verdict, so a settlement
+    the engine matched on non-UTR evidence is NOT counted as money in flight.
+    Use `bucket` to see the individual dated lines behind a total:
+    settlement_awaited (credits due from Razorpay), pipeline (captured payments
+    not yet itemised into a settlement), seller_payout (marketplace transfers due).
+    """
+    from datetime import date as _date
+
+    from engine import forecast as fcast
+
+    horizon = _clamp(horizon_working_days, 1, 60, 15)
+    limit = _clamp(limit, 1, MAX_ROWS, DEFAULT_ROWS)
+    f = fcast.build(conn, ctx["run_id"], ctx["dataset_id"], None, horizon)
+    d = fcast.to_dict(f)
+    t = d["totals"]
+
+    money = ("inflow_paise", "outflow_paise", "net_paise", "settlement_awaited_paise",
+             "pipeline_paise", "seller_payout_paise", "overdue_paise",
+             "overdue_payout_paise")
+    totals = dict(t)
+    totals.update({k.replace("_paise", "_rupees"): rupees(t[k]) for k in money if k in t})
+
+    days = [{**day, "in_rupees": rupees(day["in_paise"]),
+             "out_rupees": rupees(day["out_paise"]),
+             "running_rupees": rupees(day["running_paise"])} for day in d["days"]]
+
+    lines = d["lines"]
+    if bucket:
+        lines = [l for l in lines if l["bucket"] == bucket]
+    matching = len(lines)
+    lines = [{**l, "amount_rupees": rupees(l["amount_paise"])} for l in lines[:limit]]
+
+    cap = min(limit, 20)
+    od = [{**o, "amount_rupees": rupees(o["amount_paise"])} for o in d["overdue"][:cap]]
+    odp = [{**o, "amount_rupees": rupees(o["amount_paise"])}
+           for o in d["overdue_payouts"][:cap]]
+
+    return {
+        "as_of": d["as_of"],
+        "as_of_basis": "the day after the last settlement period in this dataset closed",
+        "horizon_working_days": d["horizon_working_days"],
+        "totals": totals,
+        "days": days,
+        "lines": lines,
+        "lines_shown": len(lines),
+        "lines_matching": matching,
+        "lines_in_window": t.get("lines_in_window", 0),
+        "lines_truncated": matching > len(lines),
+        "overdue_credits": od,
+        "overdue_payouts": odp,
+        "overdue_truncated": len(d["overdue"]) > len(od) or len(d["overdue_payouts"]) > len(odp),
+        "assumptions": d["assumptions"],
+        "caveat": "A derived schedule of money already owed under the policy, not a "
+                  "prediction of future trading. It contains no forecast of sales.",
+    }
+
+
 # =============================================================================
 # Registry. The schema list is what the model sees; HANDLERS is what runs.
 # A name absent from HANDLERS can never execute, whatever the model asks for.
@@ -451,6 +514,7 @@ HANDLERS = {
     "trace_money": trace_money,
     "get_policy": get_policy,
     "get_audit": get_audit,
+    "get_cash_forecast": get_cash_forecast,
 }
 
 _S = lambda **kw: {"type": "string", **kw}
@@ -488,6 +552,11 @@ SCHEMAS = [
     _tool("trace_money", {"node_type": _S(), "node_id": _S()}, ["node_type", "node_id"]),
     _tool("get_policy"),
     _tool("get_audit", {"settlement_id": _S(), "limit": _I()}, ["settlement_id"]),
+    _tool("get_cash_forecast", {
+        "horizon_working_days": _I(description="1-60, default 15"),
+        "bucket": _S(enum=["settlement_awaited", "pipeline", "seller_payout"],
+                     description="restrict the returned lines to one bucket"),
+        "limit": _I(description="max lines to return, max 60")}),
 ]
 
 

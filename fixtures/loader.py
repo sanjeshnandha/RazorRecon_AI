@@ -228,6 +228,36 @@ def load(conn, batch: dict | None = None) -> dict:
                           g["expected_exception_type"], None, None, None,
                           g["planted_amount_paise"], g["is_resolvable"], g["notes"]))
 
+    # ---- the pipeline: captured, not yet settled ---------------------------
+    # Additive by construction. These payments belong to no settlement, so they
+    # appear in no delta and disturb no scenario -- they are the forecastable
+    # inflow, and their PENDING allocations are the forecastable outflow.
+    for day in batch.get("pipeline", []):
+        for cap in day["captures"]:
+            p = cap["payment"]
+            if p["order_id"] not in seen_orders:
+                seen_orders.add(p["order_id"])
+                orders.append((ds, p["order_id"], p["customer_id"], p["amount_paise"],
+                               _d(p["captured_at"]), "PAID"))
+            payments.append((ds, p["payment_id"], p["order_id"], p["customer_id"],
+                             p["amount_paise"], "CAPTURED", p["payment_method"],
+                             _ts(p["captured_at"]), _ts(p["captured_at"]), None))
+            for a in cap["allocations"]:
+                allocs.append((ds, a["allocation_id"], a["payment_id"], a["seller_id"],
+                               a["gross_allocated_paise"], a["commission_paise"],
+                               a["net_seller_paise"], a["allocation_status"],
+                               _d(p["captured_at"])))
+            # Capture posting only. There is no settlement posting because there
+            # has been no settlement, so RAZORPAY_CLEARING stays open for these
+            # payments -- which is what "money taken but not yet paid out" means.
+            n_grp += 1
+            gcap = f"G_{n_grp:04d}"
+            for acct, dirn in (("RAZORPAY_CLEARING", "DR"), ("SALES", "CR")):
+                n_led += 1
+                ledger.append([ds, f"L_{n_led:05d}", gcap, acct, dirn, p["amount_paise"],
+                               p["order_id"], p["payment_id"], None, None, None,
+                               _d(p["captured_at"]), "capture (awaiting settlement)"])
+
     # Every seller in the population gets a row, including any that took no money
     # in this batch -- a marketplace roster is not only its active sellers.
     for x in batch.get("sellers", []):

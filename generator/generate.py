@@ -513,8 +513,52 @@ def generate_clean(seed: int, n_settlements: int, policy: Policy, label: str | N
             "_settlement_id": None})
     ds._seq["bank"] = bank_seq
 
+    # --- 11. the pipeline: captured, not yet settled ----------------------
+    # Money taken in the days AFTER the last period closed, which no settlement
+    # has picked up. Added AFTER the settlement items are built, so it is never
+    # itemised and never enters a delta -- it is not reconcilable yet. This is
+    # what the cash forecast is made of.
+    #
+    # Additive: the settlements above are untouched, so the batch's reported
+    # figures and every planted anomaly stay exactly as they were.
+    last_end = periods[-1][1]
+    pipeline_days = 4
+    for d_off in range(1, pipeline_days + 1):
+        day = last_end + timedelta(days=d_off)
+        if not is_working_day(day, policy):
+            continue
+        for _ in range(rng.randrange(8, 18)):
+            order_seq += 1
+            payment_seq += 1
+            oid, pid = f"O_{order_seq:05d}", f"P_{payment_seq:05d}"
+            cust = rng.choice(customer_pool)
+            amount = rng.choice([rng.randrange(19900, 500000, 100),
+                                 rng.randrange(50000, 2500000, 100)])
+            ds.orders.append({"order_id": oid, "customer_id": cust["customer_id"],
+                              "order_amount_paise": amount, "order_date": day,
+                              "order_status": "PAID"})
+            ds.payments.append({
+                "payment_id": pid, "order_id": oid, "customer_id": cust["customer_id"],
+                "amount_paise": amount, "payment_status": "CAPTURED",
+                "payment_method": weighted_choice(rng, METHOD_WEIGHTS),
+                "created_at": ts(day, rng), "captured_at": ts(day, rng),
+                "failure_reason": None, "_capture_day": day, "_pipeline": True})
+            # a share is owed to sellers but the payout has not run: PENDING, so
+            # Delta-4 leaves it alone and the forecast can count it as outflow
+            if rng.random() < 0.7:
+                seller = rng.choice(active_sellers)
+                gross = bps(amount, rng.randrange(4000, 9000))
+                commission = bps(gross, seller["commission_bps"])
+                alloc_seq += 1
+                ds.allocations.append({
+                    "allocation_id": f"A_{alloc_seq:05d}", "payment_id": pid,
+                    "seller_id": seller["seller_id"], "gross_allocated_paise": gross,
+                    "commission_paise": commission, "net_seller_paise": gross - commission,
+                    "allocation_status": "PENDING", "allocation_date": day})
+
     ds._grp_seq = 0
     ds._periods = periods
+    ds.pipeline_from = last_end + timedelta(days=1)
     ds.index()
     return ds
 
